@@ -24,20 +24,18 @@ contract iSTAXmarket is Ownable {
     IERC20 public iStax;
     IERC20 public iStaxMarketToken;
 
-    uint256 public poolAmount;
-    uint256 public coverageAmount;
-    uint256 public claimsToPay;
+    uint256 public totalDeposited;
+    uint256 public coverageOutstanding;
 
     mapping (address => uint256) public poolsInfo;
     mapping (address => uint256) public preRewardAllocation;
-    EnumerableSet public addressList;
 
-    // Declare a set state variable
     EnumerableSet.AddressSet private addressSet;
 
     event Deposit(address indexed user, uint256 amount);
-    event Withdraw(address indexed user, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 amount);
+    event Redeem(address indexed user, uint256 amount);
+    event FundStax(address indexed user, uint256 amount);
+    event Cash(address indexed user, uint256 amount);
 
     constructor(
         iStaxIssuer _issuer,
@@ -65,25 +63,25 @@ contract iSTAXmarket is Ownable {
                 return 0;
             }
 
-            if (claimsToPay != 0) {
-                
+            if (coverageOutstanding != 0) {
+                // Check if user has a claimable amount here
             }
-            if (block.number > matureBlock && amount > 0 && claimsToPay == 0) {
+            if (block.number > matureBlock && amount > 0 && coverageOutstanding == 0) {
                 // Add some check if the parameter is exercisable
                 uint256 pending = issuer.pendingiStax(poolId, address(this));
-                return pending.mul(amount).div(poolAmount);
+                return pending.mul(amount).div(totalDeposited);
             }
-            if (block.number > matureBlock && amount > 0 && claimsToPay > 0) {
-                return claimsToPay.mul(amount).div(poolAmount);
+            if (block.number > matureBlock && amount > 0 && coverageOutstanding > 0) {
+                return coverageOutstanding.mul(amount).div(totalDeposited);
             }
-            if (claimsToPay == 0 && amount > 0) {
+            if (coverageOutstanding == 0 && amount > 0) {
                 uint256 pending = issuer.pendingiStax(poolId, address(this));
-                return pending.mul(amount).div(poolAmount);
+                return pending.mul(amount).div(totalDeposited);
             }
             return 0;
         }
   
-    // Deposit iStax tokens for Participation in insurance staking
+    // Deposit iStax tokens for participation in insurance staking
     // Depositing gives a user a claim for specific outcome, which will be redeemable for 0 or 1 STAX dependong on the outcome
     // Tokens are not refundable once deposited. All sales final.
     function deposit(uint256 _amount) public {
@@ -97,7 +95,7 @@ contract iSTAXmarket is Ownable {
 
         // We may not need to incentivise users for participating ahead of the deadline, since they are covered or incentivised to participate in the earliest active contract
         preRewardAllocation[msg.sender] = preRewardAllocation[msg.sender].add((startCoverageBlock.sub(block.number)).mul(_amount));
-        poolAmount = poolAmount.add(_amount);
+        totalDeposited = totalDeposited.add(_amount);
         issuer.deposit(poolId, 0);
         emit Deposit(msg.sender, _amount);
     }
@@ -106,8 +104,8 @@ contract iSTAXmarket is Ownable {
     function fundStax(uint256 _amount) public onlyOwner {
         // Transfer user's funds to this account
         stax.safeTransferFrom(address(msg.sender), address(this), _amount);
-        // This updates the coverageAmount to calculate the total amount ready to distribute to users for payout
-        coverageAmount = coverageAmount.add(_amount);
+        // This updates the coverageOutstanding to calculate the total amount ready to distribute to users for payout
+        coverageOutstanding = coverageOutstanding.add(_amount);
  
         emit FundStax(msg.sender, _amount);
     }
@@ -115,15 +113,15 @@ contract iSTAXmarket is Ownable {
     // A redeem function to wipe out staked insurance token and redeem for rewards token from issuer.
     function redeem() public {
         // Cannot redeem if this market has no value of coverage - paid by fundStax
-        require (coverageAmount > 0, 'no redemption value');
+        require (coverageOutstanding > 0, 'no redemption value');
         // require (block.number > matureBlock, 'not redemption time');
         // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
         uint256 claim = poolsInfo[msg.sender]);
-        poolAmount = poolAmount.sub(poolsInfo[msg.sender]);
+        totalDeposited = totalDeposited.sub(poolsInfo[msg.sender]);
         // wipes users valid iSTAX balance clean since they are redeeming it up now
         poolsInfo[msg.sender] = 0;
         // First reduce this claim from the total claims owed
-        claimsToPay = claimsToPay.sub(claim);
+        coverageOutstanding = coverageOutstanding.sub(claim);
         // combines principal and rewards into one sen
         // sends STAX tokens to redeemer of claim 
         //    In future, if there's a different conversion ratio than 1:1, can be added here
@@ -131,11 +129,16 @@ contract iSTAXmarket is Ownable {
         emit Redeem(msg.sender, reward);
     }
 
-    // Function for the multisig to cash in the deposited iSTAX Insurance tokens
+    // Function for the multisig to cash in the deposited iSTAX Insurance tokens and simultaneously burn half
+    // Important, only the multisig Owner can call this function, otherwise other people could get the iSTAX.
     function cash(uint256 _amount) public onlyOwner {
-        uint256 burnAmount = _amount.div(2)
+        // Require the cash amount to be less than the amount totally deposited
+        require(totalDeposited >= _amount, "cash too large");
+        // Split the _amount to be cashed out in half.
+        uint256 burnAmount = _amount.div(2);
+        // Check if we need a spend allowance from this contract, but should be OK
         iStax.safeTransfer(address(msg.sender), burnAmount);
-        // confirm this is a safe way to burn
+        // This Burns the remaining half of the amount
         iStax.safeTransfer(address(0), burnAmount);
         emit Cash(msg.sender, _amount);
     }

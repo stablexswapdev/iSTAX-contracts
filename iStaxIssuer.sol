@@ -130,6 +130,7 @@ contract iStaxIssuer is Ownable {
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
+            // Update Pool Logic
             depositToken: _depositToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
