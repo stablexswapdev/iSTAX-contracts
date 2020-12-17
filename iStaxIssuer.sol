@@ -213,7 +213,7 @@ contract iStaxIssuer is Ownable {
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to SuperChef for iStax allocation.
+    // Deposit LP tokens to iStaxIssuer for iStax allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];

@@ -62,22 +62,12 @@ contract iSTAXmarket is Ownable {
             if (block.number < startCoverageBlock) {
                 return 0;
             }
-
-            if (coverageOutstanding != 0) {
-                // Check if user has a claimable amount here
+            if (coverageOutstanding > 0 && amount > 0) {
+                 // Check if user has a claimable amount here
+                return amount.div(totalDeposited).mul(coverageOutstanding);
+               
             }
-            if (block.number > matureBlock && amount > 0 && coverageOutstanding == 0) {
-                // Add some check if the parameter is exercisable
-                uint256 pending = issuer.pendingiStax(poolId, address(this));
-                return pending.mul(amount).div(totalDeposited);
-            }
-            if (block.number > matureBlock && amount > 0 && coverageOutstanding > 0) {
-                return coverageOutstanding.mul(amount).div(totalDeposited);
-            }
-            if (coverageOutstanding == 0 && amount > 0) {
-                uint256 pending = issuer.pendingiStax(poolId, address(this));
-                return pending.mul(amount).div(totalDeposited);
-            }
+            
             return 0;
         }
   
