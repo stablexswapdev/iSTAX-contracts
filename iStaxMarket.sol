@@ -23,12 +23,10 @@ contract iSTAXmarket is Ownable {
     IERC20 public stax;
     IERC20 public iStax;
     IERC20 public stakingToken;
-    
-    // address public multisig;
 
     uint256 public poolAmount;
     uint256 public coverageAmount;
-    uint256 public totalReward;
+    uint256 public claimsToPay;
 
     mapping (address => uint256) public poolsInfo;
     mapping (address => uint256) public preRewardAllocation;
@@ -42,7 +40,6 @@ contract iSTAXmarket is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor(
-        // address _multisig,
         iStaxIssuer _issuer,
         IERC20 _Stax,
         IERC20 _iStax,
@@ -51,7 +48,6 @@ contract iSTAXmarket is Ownable {
         uint256 _matureBlock,
         uint256 _poolId
     ) public {
-        // multisig = _multisig;
         issuer = _issuer;
         stax = _Stax;
         iStax = _iStax;
@@ -63,27 +59,30 @@ contract iSTAXmarket is Ownable {
     // There are not rewards to capture 
     // View function to see pending Tokens on frontend.
 
-      function pendingExercisableCoverage(address _user) external view returns (uint256) {
-        uint256 amount = poolsInfo[msg.sender];
-        if (block.number < startCoverageBlock) {
+        function pendingExercisableCoverage(address _user) external view returns (uint256) {
+            uint256 amount = poolsInfo[msg.sender];
+            if (block.number < startCoverageBlock) {
+                return 0;
+            }
+
+            if (claimsToPay != 0) {
+                
+            }
+            if (block.number > matureBlock && amount > 0 && claimsToPay == 0) {
+                // Add some check if the parameter is exercisable
+                uint256 pending = issuer.pendingiStax(poolId, address(this));
+                return pending.mul(amount).div(poolAmount);
+            }
+            if (block.number > matureBlock && amount > 0 && claimsToPay > 0) {
+                return claimsToPay.mul(amount).div(poolAmount);
+            }
+            if (claimsToPay == 0 && amount > 0) {
+                uint256 pending = issuer.pendingiStax(poolId, address(this));
+                return pending.mul(amount).div(poolAmount);
+            }
             return 0;
         }
-        if (block.number > matureBlock && amount > 0 && totalReward == 0) {
-            // Add some check if the parameter is exercisable
-            uint256 pending = issuer.pendingiStax(poolId, address(this));
-            return pending.mul(amount).div(poolAmount);
-        }
-        if (block.number > matureBlock && amount > 0 && totalReward > 0) {
-            return totalReward.mul(amount).div(poolAmount);
-        }
-        if (totalReward == 0 && amount > 0) {
-            uint256 pending = issuer.pendingiStax(poolId, address(this));
-            return pending.mul(amount).div(poolAmount);
-        }
-        return 0;
-    }
   
-
     // Deposit iStax tokens for Participation in insurance staking
     // Depositing gives a user a claim for specific outcome, which will be redeemable for 0 or 1 STAX dependong on the outcome
     // Tokens are not refundable once deposited. All sales final.
@@ -102,11 +101,11 @@ contract iSTAXmarket is Ownable {
         issuer.deposit(poolId, 0);
         emit Deposit(msg.sender, _amount);
     }
-
+    // This function is onlyOwner to prevent someone else from sending a small amount to make other redeems possible
     // Allow the owner multisig to deposit in a certain reward token, currently STAX, to pay for future claims
     function fundStax(uint256 _amount) public onlyOwner {
         // Transfer user's funds to this account
-        Stax.safeTransferFrom(address(msg.sender), address(this), _amount);
+        stax.safeTransferFrom(address(msg.sender), address(this), _amount);
         // This updates the coverageAmount to calculate the total amount ready to distribute to users for payout
         coverageAmount = coverageAmount.add(_amount);
  
@@ -115,27 +114,21 @@ contract iSTAXmarket is Ownable {
 
     // A redeem function to wipe out staked insurance token and redeem for rewards token from issuer.
     function redeem() public {
-        // Cannot redeem if the coverage has not been finalised
-        require (block.number > matureBlock, 'not redemption time');
-        // Check if there's funds deposited by the multisig into this redeem function
-        // require funds > 0 
+        // Cannot redeem if this market has no value of coverage - paid by fundStax
+        require (coverageAmount > 0, 'no redemption value');
+        // require (block.number > matureBlock, 'not redemption time');
         // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
-        uint256 deposit = poolsInfo[msg.sender]);
+        uint256 claim = poolsInfo[msg.sender]);
         poolAmount = poolAmount.sub(poolsInfo[msg.sender]);
-        // wipes users iSTAX balance clean since they are using it up now
+        // wipes users valid iSTAX balance clean since they are redeeming it up now
         poolsInfo[msg.sender] = 0;
-        // First reduce this claim
-        claimsToPay = claimsToPay.sub(deposit);
+        // First reduce this claim from the total claims owed
+        claimsToPay = claimsToPay.sub(claim);
         // combines principal and rewards into one sen
-        // sends STAX tokens to redeem 
-        stax.safeTransfer(address(msg.sender), fullSend);
-        emit Withdraw(msg.sender, reward);
-    }
-
-
-    //    In future, if there's a different conversion ratio than 1:1, can be added here
-        Stax.safeTransferFrom(address(this), address(msg.sender), fullSend);
-        emit Withdraw(msg.sender, reward);
+        // sends STAX tokens to redeemer of claim 
+        //    In future, if there's a different conversion ratio than 1:1, can be added here
+        stax.safeTransfer(address(this), address(msg.sender), claim);
+        emit Redeem(msg.sender, reward);
     }
 
     // Function for the multisig to cash in the deposited iSTAX Insurance tokens
