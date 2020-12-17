@@ -136,6 +136,13 @@ contract iSTAXmarket is Ownable {
         emit Cash(msg.sender, _amount);
     }
 
+    // EMERGENCY ONLY - withdraw any stax sent in to this address. 
+    // Note to owner: Please make sure not to send in any assets that are not STAX
+    function emergencyWithdraw(uint256 _amount) public onlyOwner {
+        stax.safeTransfer(address(msg.sender), _amount);
+        emit EmergencyWithdraw(msg.sender, _amount);
+    }
+
     function depositToissuer(uint256 _amount) public onlyOwner {
         iStaxMarketToken.safeApprove(address(issuer), _amount);
         issuer.deposit(poolId, _amount);
