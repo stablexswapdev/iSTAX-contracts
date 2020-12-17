@@ -7,7 +7,7 @@ import "./IERC20.sol";
 import "./SafeERC20.sol";
 import "./SafeMath.sol";
 import "./Ownable.sol";
-import './iSTAXIssuer.sol';
+import './iStaxIssuer.sol';
 import './EnumerableSet.sol';
 
 contract iSTAXmarket is Ownable {
@@ -106,7 +106,9 @@ contract iSTAXmarket is Ownable {
         require (coverageOutstanding > 0, 'no redemption value');
         // require (block.number > matureBlock, 'not redemption time');
         // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
-        uint256 claim = poolsInfo[msg.sender]);
+        uint256 claim = poolsInfo[msg.sender];
+        uint256 currentTotal = totalDeposited;
+        uint256 currentCoverage = coverageOutstanding;
         totalDeposited = totalDeposited.sub(poolsInfo[msg.sender]);
         // wipes users valid iSTAX balance clean since they are redeeming it up now
         poolsInfo[msg.sender] = 0;
@@ -115,8 +117,9 @@ contract iSTAXmarket is Ownable {
         // combines principal and rewards into one sen
         // sends STAX tokens to redeemer of claim 
         //    In future, if there's a different conversion ratio than 1:1, can be added here
-        stax.safeTransfer(address(this), address(msg.sender), claim);
-        emit Redeem(msg.sender, reward);
+         stax.safeTransfer(address(msg.sender), claim.mul(currentCoverage).div(currentTotal));
+        
+        emit Redeem(msg.sender, claim.mul(currentCoverage).div(currentTotal));
     }
 
     // Function for the multisig to cash in the deposited iSTAX Insurance tokens and simultaneously burn half
