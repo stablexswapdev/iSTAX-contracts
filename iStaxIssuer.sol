@@ -55,12 +55,14 @@ contract iStaxIssuer is Ownable {
     iStaxToken public iStax;
     // Dev address.
     address public devaddr;
-    // Block number when bonus iStax period ends.
-    uint256 public bonusEndBlock;
+    // Block number when first bonus iStax period ends.
+    uint256 public firstBonusEndBlock;
     // iStax tokens created per block.
     uint256 public iStaxPerBlock;
-    // Bonus muliplier for early iStax makers.
-    uint256 public constant BONUS_MULTIPLIER = 5;
+    // min iSTAX tokens created per block 
+      uint256 public MiniStaxPerBlock;
+    // Bonus muliplier for early iStax earners.
+    uint256 public constant BONUS_MULTIPLIER = 8;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
     IMigratorChef public migrator;
 
@@ -81,15 +83,17 @@ contract iStaxIssuer is Ownable {
         iStaxToken _iStax,
         address _devaddr,
         uint256 _iStaxPerBlock,
+        uint256 _MiniStaxPerBlock,
         uint256 _startBlock,
-        uint256 _FirstBonusEndBlock,
-        uint256 _SecondBonusEndBlock
+        uint256 _firstBonusEndBlock,
+        uint256 _halvingDuration
     ) public {
         iStax = _iStax;
         devaddr = _devaddr;
         iStaxPerBlock = _iStaxPerBlock;
+        MiniStaxPerBlock = _MiniStaxPerBlock;
         firstBonusEndBlock = _firstBonusEndBlock;
-        secondBonusEndBlock = _secondBonusEndBlock;
+        halvingDuration = _halvingDuration;
         startBlock = _startBlock;
     }
 
@@ -107,11 +111,12 @@ contract iStaxIssuer is Ownable {
         uint256 bal = depositToken.balanceOf(address(this));
         depositToken.safeApprove(address(migrator), bal);
         IERC20 newdepositToken = migrator.migrate(depositToken);
-        require(bal == newdepositToken.balanceOf(address(this)), "migrate: bad");
+        // Modified to allow the migration to happen if the new balances are more than before
+        require(bal <= newdepositToken.balanceOf(address(this)), "migrate failure, not enough tokens");
         pool.depositToken = newdepositToken;
     }
 
-    // useful to check  
+    // useful to check how many pools exist
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
@@ -143,15 +148,26 @@ contract iStaxIssuer is Ownable {
 
     // Return reward multiplier over the given _from to _to block.
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
-        if (_to <= bonusEndBlock) {
+        if (_to <= firstBonusEndBlock) {
             return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        } else if (_from >= bonusEndBlock) {
-            return _to.sub(_from);
-        } else {
-            return bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
-                _to.sub(bonusEndBlock)
-            );
+        
+        else {
+            uint currentMultiplier = BONUS_MULTIPLIER;
+            uint prevEpochBlock = firstBonusEndBlock;
+            uint accruedBlockCredit = 0;
+            while (currentMultiplier >= MiniStaxPerBlock) {
+                uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
+                for (uint i=0; i < periods; i++) {
+                    accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
+                    // Reduce the Multiplier by half
+                    currentMultiplier.div(2);
+                    prevEpochBlock = prevEpochBlock.add(halvingDuration);
+                    }
+                }
+            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
+            }
         }
+        return accruedBlockCredit;
     }
 
     // View function to see pending iStaxs on frontend.
@@ -215,6 +231,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Withdraw LP or other tokens from iSTAXissuer.
+    // Fixed to prevent reentrancy
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -248,7 +265,7 @@ contract iStaxIssuer is Ownable {
     function safeiStaxTransfer(address _to, uint256 _amount) internal {
         uint256 iStaxBal = iStax.balanceOf(address(this));
         if (_amount > iStaxBal) {
-            iStax.transfer(_to, iS taxBal);
+            iStax.transfer(_to, iStaxBal);
         } else {
             iStax.transfer(_to, _amount);
         }
