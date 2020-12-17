@@ -23,7 +23,7 @@ interface IMigratorChef {
 }
 
 
-contract SuperChef is Ownable {
+contract iStaxIssuer is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
