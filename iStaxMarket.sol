@@ -7,10 +7,10 @@ import "./IERC20.sol";
 import "./SafeERC20.sol";
 import "./SafeMath.sol";
 import "./Ownable.sol";
-import './SuperChef.sol';
+import './iSTAXIssuer.sol';
 import './EnumerableSet.sol';
 
-contract StakingChef is Ownable {
+contract iSTAXmarket is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -19,7 +19,7 @@ contract StakingChef is Ownable {
     uint256 public endBlock;
     uint256 public poolId;
 
-    SuperChef public chef;
+    iStaxIssuer public issuer;
     IERC20 public stax;
     IERC20 public stakingToken;
 
@@ -38,16 +38,16 @@ contract StakingChef is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor(
-        SuperChef _chef,
-        IERC20 _stax,
-        IERC20 _stakingToken,
+        iStaxIssuer _issuer,
+        IERC20 _iStax,
+        IERC20 _iStaxMarketToken,
         uint256 _startBlock,
         uint256 _endBlock,
         uint256 _poolId
     ) public {
-        chef = _chef;
-        stax = _stax;
-        stakingToken = _stakingToken;
+        issuer = _issuer;
+        iStax = _iStax;
+        iStaxMarketToken = _iStaxMarketToken;
         endBlock = _endBlock;
         startBlock = _startBlock;
         poolId = _poolId;
@@ -60,14 +60,14 @@ contract StakingChef is Ownable {
             return 0;
         }
         if (block.number > endBlock && amount > 0 && totalReward == 0) {
-            uint256 pending = chef.pendingStax(poolId, address(this));
+            uint256 pending = issuer.pendingiStax(poolId, address(this));
             return pending.mul(amount).div(poolAmount);
         }
         if (block.number > endBlock && amount > 0 && totalReward > 0) {
             return totalReward.mul(amount).div(poolAmount);
         }
         if (totalReward == 0 && amount > 0) {
-            uint256 pending = chef.pendingStax(poolId, address(this));
+            uint256 pending = issuer.pendingiStax(poolId, address(this));
             return pending.mul(amount).div(poolAmount);
         }
         return 0;
@@ -84,17 +84,17 @@ contract StakingChef is Ownable {
         poolsInfo[msg.sender] = poolsInfo[msg.sender].add(_amount);
         preRewardAllocation[msg.sender] = preRewardAllocation[msg.sender].add((startBlock.sub(block.number)).mul(_amount));
         poolAmount = poolAmount.add(_amount);
-        chef.deposit(poolId, 0);
+        issuer.deposit(poolId, 0);
         emit Deposit(msg.sender, _amount);
     }
 
-    // Withdraw staking tokens from SuperChef.
+    // Withdraw staking tokens from Superissuer.
     function withdraw() public {
         require (block.number > endBlock, 'not withdraw time');
         if (totalReward == 0) {
-            totalReward = chef.pendingStax(poolId, address(this));
+            totalReward = issuer.pendingiStax(poolId, address(this));
             // Claim 
-            chef.deposit(poolId, 0);
+            issuer.deposit(poolId, 0);
         }
 
         uint256 reward = poolsInfo[msg.sender].mul(totalReward).div(poolAmount);
@@ -113,13 +113,13 @@ contract StakingChef is Ownable {
         emit EmergencyWithdraw(msg.sender, _amount);
     }
 
-    function depositToChef(uint256 _amount) public onlyOwner {
-        stakingToken.safeApprove(address(chef), _amount);
-        chef.deposit(poolId, _amount);
+    function depositToissuer(uint256 _amount) public onlyOwner {
+        stakingToken.safeApprove(address(issuer), _amount);
+        issuer.deposit(poolId, _amount);
     }
 
-    function harvestFromChef() public onlyOwner {
-        chef.deposit(poolId, 0);
+    function harvestFromissuer() public onlyOwner {
+        issuer.deposit(poolId, 0);
         
     }
     }
