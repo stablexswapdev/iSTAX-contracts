@@ -147,6 +147,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Return reward multiplier over the given _from to _to block.
+    // Modified from original sushiswap code to allow for halving logic
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_to <= firstBonusEndBlock) {
             return _to.sub(_from).mul(BONUS_MULTIPLIER);
@@ -219,6 +220,7 @@ contract iStaxIssuer is Ownable {
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.acciStaxPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
+                // Give user their accrued mined iSTAX tokens on deposit
                 safeiStaxTransfer(msg.sender, pending);
             }
         }

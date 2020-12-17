@@ -22,7 +22,7 @@ contract iSTAXmarket is Ownable {
     iStaxIssuer public issuer;
     IERC20 public stax;
     IERC20 public iStax;
-    IERC20 public stakingToken;
+    IERC20 public iStaxMarketToken;
 
     uint256 public poolAmount;
     uint256 public coverageAmount;
@@ -141,7 +141,7 @@ contract iSTAXmarket is Ownable {
     }
 
     function depositToissuer(uint256 _amount) public onlyOwner {
-        stakingToken.safeApprove(address(issuer), _amount);
+        iStaxMarketToken.safeApprove(address(issuer), _amount);
         issuer.deposit(poolId, _amount);
     }
 
