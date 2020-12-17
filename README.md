@@ -1,6 +1,6 @@
 # iSTAX Insurance Contracts repo
 
-<img src="https://github.com/stablexswapdev/insuranceRepo/raw/main/insurance_preview.png"> 
+<img src="https://github.com/stablexswapdev/insuranceRepo/raw/main/new_insurance_preview.png"> 
 
 Front End available here: (work in progress)
 https://github.com/stablexswapdev/insFrontend
