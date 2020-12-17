@@ -65,9 +65,7 @@ contract iSTAXmarket is Ownable {
             if (coverageOutstanding > 0 && amount > 0) {
                  // Check if user has a claimable amount here
                 return amount.mul(coverageOutstanding).div(totalDeposited);
-               
             }
-            
             return 0;
         }
   
