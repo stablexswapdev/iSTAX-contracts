@@ -10,15 +10,14 @@ import "./SafeERC20.sol";
 
 
 interface IMigratorChef {
-    // Perform LP token migration from legacy PancakeSwap to StableX Swap.
+    // Perform LP token migration for any future StableXswap upgrades if they may occur
     // Take the current LP token address and return the new LP token address.
     // Migrator should have full access to the caller's LP token.
     // Return the new LP token address.
     //
-    // Migrator must have allowance access to PancakeSwap LP tokens.
-    // CakeSwap must mint EXACTLY the same amount of CakeSwap LP tokens or
-    // else something bad will happen. Traditional PancakeSwap does not
-    // do that so be careful!
+    // Migrator must have allowance access to Old StableXswap tokens.
+    // the new Swap's LP must mint EXACTLY the same amount of LP tokens or
+    // else something bad will happen. 
     function migrate(IERC20 token) external returns (IERC20);
 }
                          
@@ -29,7 +28,7 @@ contract iStaxIssuer is Ownable {
 
     // Info of each user.
     struct UserInfo {
-        uint256 amount;     // How many LP tokens the user has provided.
+        uint256 amount;     // How many tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
         // We do some fancy math here. Basically, any point in time, the amount of iStaxs
@@ -46,8 +45,8 @@ contract iStaxIssuer is Ownable {
 
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken;           // Address of LP token contract.
-        uint256 allocPoint;       // How many allocation points assigned to this pool.
+        IERC20 depositToken;           // Address of deposit token contract.
+        uint256 allocPoint;       // How many allocation points (distribution weight) assigned to this pool.
         uint256 lastRewardBlock;  // Last block number that iStaxs distribution occurs.
         uint256 acciStaxPerShare; // Accumulated iStaxs per share, times 1e12. See below.
     }
@@ -61,7 +60,7 @@ contract iStaxIssuer is Ownable {
     // iStax tokens created per block.
     uint256 public iStaxPerBlock;
     // Bonus muliplier for early iStax makers.
-    uint256 public constant BONUS_MULTIPLIER = 10;
+    uint256 public constant BONUS_MULTIPLIER = 5;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
     IMigratorChef public migrator;
 
@@ -83,12 +82,14 @@ contract iStaxIssuer is Ownable {
         address _devaddr,
         uint256 _iStaxPerBlock,
         uint256 _startBlock,
-        uint256 _bonusEndBlock
+        uint256 _FirstBonusEndBlock,
+        uint256 _SecondBonusEndBlock
     ) public {
         iStax = _iStax;
         devaddr = _devaddr;
         iStaxPerBlock = _iStaxPerBlock;
-        bonusEndBlock = _bonusEndBlock;
+        firstBonusEndBlock = _firstBonusEndBlock;
+        secondBonusEndBlock = _secondBonusEndBlock;
         startBlock = _startBlock;
     }
 
@@ -98,31 +99,33 @@ contract iStaxIssuer is Ownable {
     }
 
     // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
+    // This is only relevant for LPs if StableXswap features an upgrade in the future.
     function migrate(uint256 _pid) public {
         require(address(migrator) != address(0), "migrate: no migrator");
         PoolInfo storage pool = poolInfo[_pid];
-        IERC20 lpToken = pool.lpToken;
-        uint256 bal = lpToken.balanceOf(address(this));
-        lpToken.safeApprove(address(migrator), bal);
-        IERC20 newLpToken = migrator.migrate(lpToken);
-        require(bal == newLpToken.balanceOf(address(this)), "migrate: bad");
-        pool.lpToken = newLpToken;
+        IERC20 depositToken = pool.depositToken;
+        uint256 bal = depositToken.balanceOf(address(this));
+        depositToken.safeApprove(address(migrator), bal);
+        IERC20 newdepositToken = migrator.migrate(depositToken);
+        require(bal == newdepositToken.balanceOf(address(this)), "migrate: bad");
+        pool.depositToken = newdepositToken;
     }
 
+    // useful to check  
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
-    // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+    // Add a new Token to the pool. Can only be called by the owner.
+    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do and split
+    function add(uint256 _allocPoint, IERC20 _depositToken, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
-            lpToken: _lpToken,
+            depositToken: _depositToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
             acciStaxPerShare: 0
@@ -156,7 +159,7 @@ contract iStaxIssuer is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
         uint256 acciStaxPerShare = pool.acciStaxPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.depositToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 iStaxReward = multiplier.mul(iStaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -179,7 +182,7 @@ contract iStaxIssuer is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply = pool.depositToken.balanceOf(address(this));
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -204,14 +207,14 @@ contract iStaxIssuer is Ownable {
             }
         }
         if(_amount > 0) {
-            pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+            pool.depositToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
         user.rewardDebt = user.amount.mul(pool.acciStaxPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw LP tokens from SuperChef.
+    // Withdraw LP or other tokens from iSTAXissuer.
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -223,7 +226,7 @@ contract iStaxIssuer is Ownable {
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
-            pool.lpToken.safeTransfer(address(msg.sender), _amount);
+            pool.depositToken.safeTransfer(address(msg.sender), _amount);
         }
         user.rewardDebt = user.amount.mul(pool.acciStaxPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
@@ -236,7 +239,7 @@ contract iStaxIssuer is Ownable {
         uint amount = user.amount;
         user.amount = 0;
         user.rewardDebt = 0;
-        pool.lpToken.safeTransfer(address(msg.sender), amount);
+        pool.depositToken.safeTransfer(address(msg.sender), amount);
         emit EmergencyWithdraw(msg.sender, _pid, amount);
         
     }
@@ -245,7 +248,7 @@ contract iStaxIssuer is Ownable {
     function safeiStaxTransfer(address _to, uint256 _amount) internal {
         uint256 iStaxBal = iStax.balanceOf(address(this));
         if (_amount > iStaxBal) {
-            iStax.transfer(_to, iStaxBal);
+            iStax.transfer(_to, iS taxBal);
         } else {
             iStax.transfer(_to, _amount);
         }

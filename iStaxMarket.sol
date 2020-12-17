@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-
+// This contract is used 
 pragma solidity 0.6.12;
 
 import "./IERC20.sol";
@@ -15,13 +15,15 @@ contract iSTAXmarket is Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public startBlock;
-    uint256 public endBlock;
+    uint256 public startCoverageBlock;
+    uint256 public matureBlock;
     uint256 public poolId;
 
     iStaxIssuer public issuer;
     IERC20 public stax;
     IERC20 public stakingToken;
+    
+    // address public multisig;
 
     uint256 public poolAmount;
     uint256 public totalReward;
@@ -38,32 +40,36 @@ contract iSTAXmarket is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor(
+        // address _multisig,
         iStaxIssuer _issuer,
         IERC20 _iStax,
         IERC20 _iStaxMarketToken,
-        uint256 _startBlock,
-        uint256 _endBlock,
+        uint256 _startCoverageBlock,
+        uint256 _matureBlock,
         uint256 _poolId
     ) public {
+        // multisig = _multisig;
         issuer = _issuer;
         iStax = _iStax;
         iStaxMarketToken = _iStaxMarketToken;
-        endBlock = _endBlock;
-        startBlock = _startBlock;
+        matureBlock = _matureBlock;
+        startCoverageBlock = _startCoverageBlock;
         poolId = _poolId;
     }
-
+    // There are not rewards to capture 
     // View function to see pending Tokens on frontend.
-    function pendingReward(address _user) external view returns (uint256) {
+
+      function pendingExercisableCoverage(address _user) external view returns (uint256) {
         uint256 amount = poolsInfo[msg.sender];
-        if (block.number < startBlock) {
+        if (block.number < startCoverageBlock) {
             return 0;
         }
-        if (block.number > endBlock && amount > 0 && totalReward == 0) {
+        if (block.number > matureBlock && amount > 0 && totalReward == 0) {
+            // Add some check if the parameter is exercisable
             uint256 pending = issuer.pendingiStax(poolId, address(this));
             return pending.mul(amount).div(poolAmount);
         }
-        if (block.number > endBlock && amount > 0 && totalReward > 0) {
+        if (block.number > matureBlock && amount > 0 && totalReward > 0) {
             return totalReward.mul(amount).div(poolAmount);
         }
         if (totalReward == 0 && amount > 0) {
@@ -72,45 +78,61 @@ contract iSTAXmarket is Ownable {
         }
         return 0;
     }
+  
 
-
-    // Deposit stax tokens for Locked Reward allocation.
+    // Deposit iStax tokens for Participation in insurance staking
+    // Depositing gives a user a claim for specific outcome, which will be redeemable for 0 or 1 STAX dependong on the outcome
+    // Tokens are not refundable once deposited. All sales final.
     function deposit(uint256 _amount) public {
-        require (block.number < startBlock, 'not deposit time');
-        stax.safeTransferFrom(address(msg.sender), address(this), _amount);
+        require (block.number < startCoverageBlock, 'not deposit time');
+        iStax.safeTransferFrom(address(msg.sender), address(this), _amount);
+        // This adds the users to the claims list (an enumerable set)
         if (poolsInfo[msg.sender] == 0) {
             addressSet.add(address(msg.sender));
         }
         poolsInfo[msg.sender] = poolsInfo[msg.sender].add(_amount);
-        preRewardAllocation[msg.sender] = preRewardAllocation[msg.sender].add((startBlock.sub(block.number)).mul(_amount));
+
+        // We may not need to incentivise users for participating ahead of the deadline, since they are covered or incentivised to participate in the earliest active contract
+        preRewardAllocation[msg.sender] = preRewardAllocation[msg.sender].add((startCoverageBlock.sub(block.number)).mul(_amount));
         poolAmount = poolAmount.add(_amount);
         issuer.deposit(poolId, 0);
         emit Deposit(msg.sender, _amount);
     }
 
-    // Withdraw staking tokens from issuer.
+    // A redeem function to wipe out staked insurance token and redeem for rewards token from issuer.
     function redeem() public {
-        require (block.number > endBlock, 'not redemption time');
-        if (totalReward == 0) {
-            totalReward = issuer.pendingiStax(poolId, address(this));
-            // Claim 
-            issuer.deposit(poolId, 0);
-        }
-
-        uint256 reward = poolsInfo[msg.sender].mul(totalReward).div(poolAmount);
-        uint256 fullSend = reward.add(poolsInfo[msg.sender]);
+        // Cannot redeem if the coverage has not been finalised
+        require (block.number > matureBlock, 'not redemption time');
+        // Check if there's funds deposited by the multisig into this redeem function
+        // require funds > 0 
+        // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
+        uint256 deposit = poolsInfo[msg.sender]);
         poolAmount = poolAmount.sub(poolsInfo[msg.sender]);
         poolsInfo[msg.sender] = 0;
-        totalReward = totalReward.sub(reward);
+        // First reduce this claim
+        claimsToPay = claimsToPay.sub(deposit);
         // combines principal and rewards into one sen
         stax.safeTransfer(address(msg.sender), fullSend);
         emit Withdraw(msg.sender, reward);
     }
 
-    // EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _amount) public onlyOwner {
-        stax.safeTransfer(address(msg.sender), _amount);
-        emit EmergencyWithdraw(msg.sender, _amount);
+
+
+
+
+
+    //    In future, if there's a different conversion ratio than 1:1, can be added here
+        Stax.safeTransferFrom(address(this), address(msg.sender), fullSend);
+        emit Withdraw(msg.sender, reward);
+    }
+
+    // Function for the multisig to cash in the deposited iSTAX Insurance tokens
+    function cash(uint256 _amount) public onlyOwner {
+        uint256 burnAmount = _amount.div(2)
+        iStax.safeTransfer(address(msg.sender), burnAmount);
+        // confirm this is a safe way to burn
+        iStax.safeTransfer(address(0), burnAmount);
+        emit Cash(msg.sender, _amount);
     }
 
     function depositToissuer(uint256 _amount) public onlyOwner {
@@ -118,6 +140,7 @@ contract iSTAXmarket is Ownable {
         issuer.deposit(poolId, _amount);
     }
 
+    // This is to allow Issuer to collect the rewards for the issuer? 
     function harvestFromissuer() public onlyOwner {
         issuer.deposit(poolId, 0);
         
