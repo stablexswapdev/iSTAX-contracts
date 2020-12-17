@@ -89,7 +89,7 @@ contract iStaxIssuer is Ownable {
         uint256 _MiniStaxPerBlock,
         uint256 _startBlock,
         uint256 _firstBonusEndBlock,
-        uint256 _halvingDuration,
+        uint256 _halvingDuration
     ) public {
         iStax = _iStax;
         devaddr = _devaddr;
