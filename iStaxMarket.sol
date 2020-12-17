@@ -88,9 +88,9 @@ contract iSTAXmarket is Ownable {
         emit Deposit(msg.sender, _amount);
     }
 
-    // Withdraw staking tokens from Superissuer.
-    function withdraw() public {
-        require (block.number > endBlock, 'not withdraw time');
+    // Withdraw staking tokens from issuer.
+    function redeem() public {
+        require (block.number > endBlock, 'not redemption time');
         if (totalReward == 0) {
             totalReward = issuer.pendingiStax(poolId, address(this));
             // Claim 

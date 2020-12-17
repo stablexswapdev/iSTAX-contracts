@@ -6,6 +6,8 @@ pragma solidity 0.6.12;
 import "./ERC20.sol";
 import "./Ownable.sol";
 
+// This contract is 
+
 contract iStaxMarketToken is ERC20, Ownable {
     constructor(
         string memory name,
