@@ -8,7 +8,7 @@ import "./Ownable.sol";
 // We plan to first issue this token with a certain supply distributed out to be able to keep aside for a few categories.
 
 
-contract iSTAXToken is ERC20("iSTAX Insurance Token", "iSTAX"), Ownable {
+contract iStaxToken is ERC20("iSTAX Insurance Token", "iSTAX"), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);

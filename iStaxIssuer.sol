@@ -74,6 +74,9 @@ contract iStaxIssuer is Ownable {
     uint256 public totalAllocPoint = 0;
     // The block number when iStax mining starts.
     uint256 public startBlock;
+    // The number of blocks between halvings
+    uint256 public halvingDuration;
+
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -86,7 +89,7 @@ contract iStaxIssuer is Ownable {
         uint256 _MiniStaxPerBlock,
         uint256 _startBlock,
         uint256 _firstBonusEndBlock,
-        uint256 _halvingDuration
+        uint256 _halvingDuration,
     ) public {
         iStax = _iStax;
         devaddr = _devaddr;
@@ -149,10 +152,10 @@ contract iStaxIssuer is Ownable {
 
     // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
-    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
+        function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_to <= firstBonusEndBlock) {
             return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        
+        }
         else {
             uint currentMultiplier = BONUS_MULTIPLIER;
             uint prevEpochBlock = firstBonusEndBlock;
@@ -167,9 +170,8 @@ contract iStaxIssuer is Ownable {
                     }
                 }
             accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
+            return accruedBlockCredit;
             }
-        }
-        return accruedBlockCredit;
     }
 
     // View function to see pending iStaxs on frontend.
