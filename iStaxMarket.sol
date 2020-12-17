@@ -21,11 +21,13 @@ contract iSTAXmarket is Ownable {
 
     iStaxIssuer public issuer;
     IERC20 public stax;
+    IERC20 public iStax;
     IERC20 public stakingToken;
     
     // address public multisig;
 
     uint256 public poolAmount;
+    uint256 public coverageAmount;
     uint256 public totalReward;
 
     mapping (address => uint256) public poolsInfo;
@@ -42,6 +44,7 @@ contract iSTAXmarket is Ownable {
     constructor(
         // address _multisig,
         iStaxIssuer _issuer,
+        IERC20 _Stax,
         IERC20 _iStax,
         IERC20 _iStaxMarketToken,
         uint256 _startCoverageBlock,
@@ -50,6 +53,7 @@ contract iSTAXmarket is Ownable {
     ) public {
         // multisig = _multisig;
         issuer = _issuer;
+        stax = _Stax;
         iStax = _iStax;
         iStaxMarketToken = _iStaxMarketToken;
         matureBlock = _matureBlock;
@@ -99,6 +103,16 @@ contract iSTAXmarket is Ownable {
         emit Deposit(msg.sender, _amount);
     }
 
+    // Allow the owner multisig to deposit in a certain reward token, currently STAX, to pay for future claims
+    function fundStax(uint256 _amount) public onlyOwner {
+        // Transfer user's funds to this account
+        Stax.safeTransferFrom(address(msg.sender), address(this), _amount);
+        // This updates the coverageAmount to calculate the total amount ready to distribute to users for payout
+        coverageAmount = coverageAmount.add(_amount);
+ 
+        emit FundStax(msg.sender, _amount);
+    }
+
     // A redeem function to wipe out staked insurance token and redeem for rewards token from issuer.
     function redeem() public {
         // Cannot redeem if the coverage has not been finalised
@@ -108,17 +122,15 @@ contract iSTAXmarket is Ownable {
         // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
         uint256 deposit = poolsInfo[msg.sender]);
         poolAmount = poolAmount.sub(poolsInfo[msg.sender]);
+        // wipes users iSTAX balance clean since they are using it up now
         poolsInfo[msg.sender] = 0;
         // First reduce this claim
         claimsToPay = claimsToPay.sub(deposit);
         // combines principal and rewards into one sen
+        // sends STAX tokens to redeem 
         stax.safeTransfer(address(msg.sender), fullSend);
         emit Withdraw(msg.sender, reward);
     }
-
-
-
-
 
 
     //    In future, if there's a different conversion ratio than 1:1, can be added here
