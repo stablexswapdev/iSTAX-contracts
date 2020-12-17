@@ -36,6 +36,7 @@ contract iSTAXmarket is Ownable {
     event Redeem(address indexed user, uint256 amount);
     event FundStax(address indexed user, uint256 amount);
     event Cash(address indexed user, uint256 amount);
+    event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor(
         iStaxIssuer _issuer,
