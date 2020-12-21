@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
-// In this contract we create a new Issuer contract that mints and distributes the new iSTAX token
-// To users who stake tokens into (mainly) fixed term liquidity pools
+// A modification to the original Sushichef Type contract
+
 pragma solidity ^0.6.12;
 
-import "./iStaxToken.sol";
+import ".StaxToken.sol";
 import "./Ownable.sol";
 import "./SafeERC20.sol";
 
-
 interface IMigratorChef {
-    // Perform LP token migration for any future StableXswap upgrades if they may occur
-    // Take the current LP token address and return the new LP token address.
-    // Migrator should have full access to the caller's LP token.
-    // Return the new LP token address.
+    // Perform Deposits token migration for any future StableXswap upgrades if they may occur
+    // Take the current Deposits token address and return the new Deposits token address.
+    // Migrator should have full access to the caller's Deposits token.
+    // Return the new Deposits token address.
     //
     // Migrator must have allowance access to Old StableXswap tokens.
-    // the new Swap's LP must mint EXACTLY the same amount of LP tokens or
+    // the new Swap's Deposits must mint EXACTLY the same amount of Deposits tokens or
     // else something bad will happen. 
     function migrate(IERC20 token) external returns (IERC20);
 }
                          
-
-contract iStaxIssuer is Ownable {
+contract StaxIssuer is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -30,48 +28,48 @@ contract iStaxIssuer is Ownable {
         uint256 amount;     // How many tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
-        // We do some fancy math here. Basically, any point in time, the amount of iStaxs
+        // We do some fancy math here. Basically, any point in time, the amount of Staxs
         // entitled to a user but is pending to be distributed is:
         //
-        //   pending reward = (user.amount * pool.acciStaxPerShare) - user.rewardDebt
+        //   pending reward = (user.amount * pool.accStaxPerShare) - user.rewardDebt
         //
-        // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `acciStaxPerShare` (and `lastRewardBlock`) gets updated.
+        // Whenever a user deposits or withdraws Deposits tokens to a pool. Here's what happens:
+        //   1. The pool's `accStaxPerShare` (and `lastRewardBlock`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
     }
-
+    // Deposit token must be IERC20 compatible
     // Info of each pool.
     struct PoolInfo {
         IERC20 depositToken;           // Address of deposit token contract.
         uint256 allocPoint;       // How many allocation points (distribution weight) assigned to this pool.
-        uint256 lastRewardBlock;  // Last block number that iStaxs distribution occurs.
-        uint256 acciStaxPerShare; // Accumulated iStaxs per share, times 1e12. See below.
+        uint256 lastRewardBlock;  // Last block number that Staxs distribution occurs.
+        uint256 accStaxPerShare; // Accumulated Staxs per share, times 1e12. See below.
     }
 
-    // The iStax TOKEN!
-    iStaxToken public iStax;
+    // The Stax TOKEN!
+    StaxToken public Stax;
     // Dev address.
     address public devaddr;
-    // Block number when first bonus iStax period ends.
+    // Block number when first bonus Stax period ends.
     uint256 public firstBonusEndBlock;
-    // iStax tokens created per block.
-    uint256 public iStaxPerBlock;
-    // min iSTAX tokens created per block 
-      uint256 public MiniStaxPerBlock;
-    // Bonus muliplier for early iStax earners.
+    // Stax tokens created per block.
+    uint256 public StaxPerBlock;
+    // min Stax tokens created per block 
+      uint256 public MinStaxPerBlock;
+    // Bonus muliplier for early Stax earners.
     uint256 public constant BONUS_MULTIPLIER = 8;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
     IMigratorChef public migrator;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
-    // Info of each user that stakes LP tokens.
+    // Info of each user that stakes Deposits tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    // The block number when iStax mining starts.
+    // The block number when Stax mining starts.
     uint256 public startBlock;
     // The number of blocks between halvings
     uint256 public halvingDuration;
@@ -82,21 +80,24 @@ contract iStaxIssuer is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     constructor(
-        iStaxToken _iStax,
+        StaxToken _Stax,
         address _devaddr,
-        uint256 _iStaxPerBlock,
-        uint256 _MiniStaxPerBlock,
+        uint256 _StaxPerBlock,
+        uint256 _MinStaxPerBlock,
         uint256 _startBlock,
         uint256 _firstBonusEndBlock,
         uint256 _halvingDuration
+        // bool _isLive  // is not necessary at this time because we can set all the pool weights to 0 if we need to pause the rewards accrual
+
     ) public {
-        iStax = _iStax;
+        Stax = _Stax;
         devaddr = _devaddr;
-        iStaxPerBlock = _iStaxPerBlock;
-        MiniStaxPerBlock = _MiniStaxPerBlock;
+        StaxPerBlock = _StaxPerBlock;
+        MinStaxPerBlock = _MinStaxPerBlock;
         firstBonusEndBlock = _firstBonusEndBlock;
         halvingDuration = _halvingDuration;
         startBlock = _startBlock;
+        // isLive = _isLive;
     }
 
     // Set the migrator contract. Can only be called by the owner.
@@ -104,8 +105,8 @@ contract iStaxIssuer is Ownable {
         migrator = _migrator;
     }
 
-    // Migrate lp token to another lp contract. Can be called by anyone. We trust that migrator contract is good.
-    // This is only relevant for LPs if StableXswap features an upgrade in the future.
+    // Migrate Deposits token to another Deposits contract. Can be called by anyone. We trust that migrator contract is good.
+    // This is only relevant for Depositss if StableXswap features an upgrade in the future.
     function migrate(uint256 _pid) public {
         require(address(migrator) != address(0), "migrate: no migrator");
         PoolInfo storage pool = poolInfo[_pid];
@@ -124,7 +125,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Add a new Token to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do and split
+    // XXX DO NOT add the same Deposits token more than once. Rewards will be messed up if you do and split
     function add(uint256 _allocPoint, IERC20 _depositToken, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -136,11 +137,11 @@ contract iStaxIssuer is Ownable {
             depositToken: _depositToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            acciStaxPerShare: 0
+            accStaxPerShare: 0
         }));
     }
 
-    // Update the given pool's iStax allocation point. Can only be called by the owner.
+    // Update the given pool's Stax allocation point. Can only be called by the owner.
     function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -159,7 +160,7 @@ contract iStaxIssuer is Ownable {
             uint currentMultiplier = BONUS_MULTIPLIER;
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
-            while (currentMultiplier >= MiniStaxPerBlock) {
+            while (currentMultiplier >= MinStaxPerBlock) {
                 uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
                     accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
@@ -173,18 +174,18 @@ contract iStaxIssuer is Ownable {
             }
     }
 
-    // View function to see pending iStaxs on frontend.
-    function pendingiStax(uint256 _pid, address _user) external view returns (uint256) {
+    // View function to see pending Staxs on frontend.
+    function pendingStax(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 acciStaxPerShare = pool.acciStaxPerShare;
-        uint256 lpSupply = pool.depositToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+        uint256 accStaxPerShare = pool.accStaxPerShare;
+        uint256 DepositsSupply = pool.depositToken.balanceOf(address(this));
+        if (block.number > pool.lastRewardBlock && DepositsSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 iStaxReward = multiplier.mul(iStaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            acciStaxPerShare = acciStaxPerShare.add(iStaxReward.mul(1e12).div(lpSupply));
+            uint256 StaxReward = multiplier.mul(StaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+            accStaxPerShare = accStaxPerShare.add(StaxReward.mul(1e12).div(DepositsSupply));
         }
-        return user.amount.mul(acciStaxPerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(accStaxPerShare).div(1e12).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -201,59 +202,66 @@ contract iStaxIssuer is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = pool.depositToken.balanceOf(address(this));
-        if (lpSupply == 0) {
+        uint256 DepositsSupply = pool.depositToken.balanceOf(address(this));
+        if (DepositsSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 iStaxReward = multiplier.mul(iStaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        iStax.mint(devaddr, iStaxReward.div(8));
-        iStax.mint(address(this), iStaxReward);
-        pool.acciStaxPerShare = pool.acciStaxPerShare.add(iStaxReward.mul(1e12).div(lpSupply));
+        uint256 StaxReward = multiplier.mul(StaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        // removed the mint additional token to dev because this is already done in the original distributor
+        // Stax.mint(devaddr, StaxReward.div(8));
+
+        // Instead of mint, we withdraw tokens from stax
+        // Stax.mint(address(this), StaxReward);
+        // Transfers tokens from the devaddr (Dev Address must approve this distributor to allow for these tokens to be sent to the Chef)
+        Stax.transferFrom(devaddr, address(this), StaxReward);
+          
+        pool.accStaxPerShare = pool.accStaxPerShare.add(StaxReward.mul(1e12).div(DepositsSupply));
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to iStaxIssuer for iStax allocation.
+    // Deposit Deposits tokens to StaxIssuer for Stax allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.acciStaxPerShare).div(1e12).sub(user.rewardDebt);
+            uint256 pending = user.amount.mul(pool.accStaxPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-                // Give user their accrued mined iSTAX tokens on deposit
-                safeiStaxTransfer(msg.sender, pending);
+                // Give user their accrued mined Stax tokens on deposit
+                safeStaxTransfer(msg.sender, pending);
             }
         }
         if(_amount > 0) {
             pool.depositToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
-        user.rewardDebt = user.amount.mul(pool.acciStaxPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accStaxPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw LP or other tokens from iSTAXissuer.
+    // Withdraw Deposits or other tokens from Staxissuer.
     // Fixed to prevent reentrancy
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.acciStaxPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accStaxPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            safeiStaxTransfer(msg.sender, pending);
+            safeStaxTransfer(msg.sender, pending);
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.depositToken.safeTransfer(address(msg.sender), _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.acciStaxPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accStaxPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
+    // Updated to prevent reentrancy by first saving and updating all state variables before the safeTransfer
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -262,16 +270,25 @@ contract iStaxIssuer is Ownable {
         user.rewardDebt = 0;
         pool.depositToken.safeTransfer(address(msg.sender), amount);
         emit EmergencyWithdraw(msg.sender, _pid, amount);
-        
     }
 
-    // Safe iStax transfer function, just in case if rounding error causes pool to not have enough iStaxs.
-    function safeiStaxTransfer(address _to, uint256 _amount) internal {
-        uint256 iStaxBal = iStax.balanceOf(address(this));
-        if (_amount > iStaxBal) {
-            iStax.transfer(_to, iStaxBal);
+    // Function to withdraw any Stax that may be erroneously drawn from the dev in case of some error, 
+    // so that the dev can still reclaim tokens and redistribute in case of a pause or other situation
+    // This function is quite powerful, so it is important to make this a multisig devaddr, so that only via 
+    // a committee's vote can this be called. 
+    function emergencyRewardsWithdraw() public {
+        require(msg.sender == devaddr, "only dev");  
+        uint256 StaxBal = Stax.balanceOf(address(this));      
+        Stax.transfer(devaddr, StaxBal);
+    }
+
+    // Safe Stax transfer function, just in case if rounding error causes pool to not have enough Staxs.
+    function safeStaxTransfer(address _to, uint256 _amount) internal {
+        uint256 StaxBal = Stax.balanceOf(address(this));
+        if (_amount > StaxBal) {
+            Stax.transfer(_to, StaxBal);
         } else {
-            iStax.transfer(_to, _amount);
+            Stax.transfer(_to, _amount);
         }
     }
 
