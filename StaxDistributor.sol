@@ -1,14 +1,11 @@
-
 // SPDX-License-Identifier: MIT
 // A modification to the original Sushichef Type contract
-
 
 pragma solidity ^0.6.12;
 
 import ".StaxToken.sol";
 import "./Ownable.sol";
 import "./SafeERC20.sol";
-
 
 interface IMigratorChef {
     // Perform Deposits token migration for any future StableXswap upgrades if they may occur
@@ -22,7 +19,6 @@ interface IMigratorChef {
     function migrate(IERC20 token) external returns (IERC20);
 }
                          
-
 contract StaxIssuer is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -43,7 +39,7 @@ contract StaxIssuer is Ownable {
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
     }
-
+    // Deposit token must be IERC20 compatible
     // Info of each pool.
     struct PoolInfo {
         IERC20 depositToken;           // Address of deposit token contract.
@@ -91,6 +87,8 @@ contract StaxIssuer is Ownable {
         uint256 _startBlock,
         uint256 _firstBonusEndBlock,
         uint256 _halvingDuration
+        // bool _isLive  // is not necessary at this time because we can set all the pool weights to 0 if we need to pause the rewards accrual
+
     ) public {
         Stax = _Stax;
         devaddr = _devaddr;
@@ -99,6 +97,7 @@ contract StaxIssuer is Ownable {
         firstBonusEndBlock = _firstBonusEndBlock;
         halvingDuration = _halvingDuration;
         startBlock = _startBlock;
+        // isLive = _isLive;
     }
 
     // Set the migrator contract. Can only be called by the owner.
@@ -271,7 +270,16 @@ contract StaxIssuer is Ownable {
         user.rewardDebt = 0;
         pool.depositToken.safeTransfer(address(msg.sender), amount);
         emit EmergencyWithdraw(msg.sender, _pid, amount);
-        
+    }
+
+    // Function to withdraw any Stax that may be erroneously drawn from the dev in case of some error, 
+    // so that the dev can still reclaim tokens and redistribute in case of a pause or other situation
+    // This function is quite powerful, so it is important to make this a multisig devaddr, so that only via 
+    // a committee's vote can this be called. 
+    function emergencyRewardsWithdraw() public {
+        require(msg.sender == devaddr, "only dev");  
+        uint256 StaxBal = Stax.balanceOf(address(this));      
+        Stax.transfer(devaddr, StaxBal);
     }
 
     // Safe Stax transfer function, just in case if rounding error causes pool to not have enough Staxs.

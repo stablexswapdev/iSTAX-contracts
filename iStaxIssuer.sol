@@ -1,7 +1,6 @@
-
 // SPDX-License-Identifier: MIT
-
-
+// In this contract we create a new Issuer contract that mints and distributes the new iSTAX token
+// To users who stake tokens into (mainly) fixed term liquidity pools
 pragma solidity ^0.6.12;
 
 import "./iStaxToken.sol";
