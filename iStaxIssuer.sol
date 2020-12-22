@@ -132,13 +132,14 @@ contract iStaxIssuer is Ownable {
         
         uint256 latestRewardBlockck = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        // Update Pool Logic
         poolInfo.push(PoolInfo({
+            // Update Pool Logic
             depositToken: _depositToken,
             allocPoint: _allocPoint,
-            latestRewardBlockcklatestRewardBlocklock,
-            acciStaxPerShare: 0
+            latestRewardBlock: latestRewardBlock,
+            accStaxPerShare: 0
         }));
+
     }
 
     // Update the given pool's iStax allocation point. Can only be called by the owner.
