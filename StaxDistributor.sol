@@ -59,7 +59,7 @@ contract StaxIssuer is Ownable {
     // min Stax tokens created per block 
       uint256 public MinStaxPerBlock;
     // Bonus muliplier for early Stax earners.
-    uint256 public constant BONUS_MULTIPLIER = 8;
+    uint256 public constant INITIAL_BONUS_MULTIPLIER = 4;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
     IMigratorChef public migrator;
 
@@ -154,21 +154,22 @@ contract StaxIssuer is Ownable {
     // Modified from original sushiswap code to allow for halving logic
         function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_to <= firstBonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
+            return _to.sub(_from).mul(INITIAL_BONUS_MULTIPLIER);
         }
         else {
-            uint currentMultiplier = BONUS_MULTIPLIER;
+            uint currentMultiplier = INITIAL_BONUS_MULTIPLIER;
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
-            while (currentMultiplier >= MinStaxPerBlock) {
-                uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
-                for (uint i=0; i < periods; i++) {
-                    accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
-                    // Reduce the Multiplier by half
+            uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
+            for (uint i=0; i < periods; i++) {
+                accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
+                // Reduce the Multiplier by half
+                if (currentMultiplier > MinStaxPerBlock) {
                     currentMultiplier.div(2);
-                    prevEpochBlock = prevEpochBlock.add(halvingDuration);
-                    }
                 }
+                prevEpochBlock = prevEpochBlock.add(halvingDuration);
+                }
+               
             accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
             return accruedBlockCredit;
             }
