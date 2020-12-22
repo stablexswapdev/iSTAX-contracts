@@ -24,6 +24,7 @@ contract StaxFixedStaking is Ownable {
 
     iStaxIssuer public issuer;
     IERC20 public stax;
+    IERC20 public iStax;
     IERC20 public stakingToken;
 
     uint256 public poolAmount;
@@ -43,6 +44,7 @@ contract StaxFixedStaking is Ownable {
     constructor(
         iStaxissuer _issuer,
         IERC20 _stax,
+        IERC20 _iStax,
         IERC20 _stakingToken,
         uint256 _startBlock,
         uint256 _endBlock,
@@ -50,6 +52,7 @@ contract StaxFixedStaking is Ownable {
     ) public {
         issuer = _issuer;
         stax = _stax;
+        iStax = _iStax;
         stakingToken = _stakingToken;
         endBlock = _endBlock;
         startBlock = _startBlock;
@@ -63,14 +66,14 @@ contract StaxFixedStaking is Ownable {
             return 0;
         }
         if (block.number > endBlock && amount > 0 && totalReward == 0) {
-            uint256 pending = issuer.pendingStax(poolId, address(this));
+            uint256 pending = issuer.pendingiStax(poolId, address(this));
             return pending.mul(amount).div(poolAmount);
         }
         if (block.number > endBlock && amount > 0 && totalReward > 0) {
             return totalReward.mul(amount).div(poolAmount);
         }
         if (totalReward == 0 && amount > 0) {
-            uint256 pending = issuer.pendingStax(poolId, address(this));
+            uint256 pending = issuer.pendingiStax(poolId, address(this));
             return pending.mul(amount).div(poolAmount);
         }
         return 0;
@@ -95,22 +98,24 @@ contract StaxFixedStaking is Ownable {
     function withdraw() public {
         require (block.number > endBlock, 'not withdraw time');
         if (totalReward == 0) {
-            totalReward = issuer.pendingStax(poolId, address(this));
-            // Claim 
+            totalReward = issuer.pendingiStax(poolId, address(this));
+            // Claim rewards into the pool
             issuer.deposit(poolId, 0);
         }
 
         uint256 reward = poolsInfo[msg.sender].mul(totalReward).div(poolAmount);
-        uint256 fullSend = reward.add(poolsInfo[msg.sender]);
-        poolAmount = poolAmount.sub(poolsInfo[msg.sender]);
+        uint256 depositAmount = poolsInfo[msg.sender];
+        poolAmount = poolAmount.sub(depositAmount);
         poolsInfo[msg.sender] = 0;
         totalReward = totalReward.sub(reward);
-        // combines principal and rewards into one sen
-        stax.safeTransfer(address(msg.sender), fullSend);
+        // returns the initial deposited STAX
+        stax.safeTransfer(address(msg.sender), depositAmount);
+        // distributes the iSTAX reward to the user
+        iStax.safeTransfer(address(msg.sender), reward);
         emit Withdraw(msg.sender, reward);
     }
 
-    // EMERGENCY ONLY.
+    // EMERGENCY ONLY. 
     function emergencyWithdraw(uint256 _amount) public onlyOwner {
         stax.safeTransfer(address(msg.sender), _amount);
         emit EmergencyWithdraw(msg.sender, _amount);
