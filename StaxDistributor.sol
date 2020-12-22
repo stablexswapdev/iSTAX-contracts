@@ -54,7 +54,7 @@ contract StaxIssuer is Ownable {
     address public devaddr;
     // Block number when first bonus Stax period ends.
     uint256 public firstBonusEndBlock;
-    // Stax tokens created per block.
+    // Base Stax tokens created per block.
     uint256 public StaxPerBlock;
     // min Stax tokens created per block 
       uint256 public MinStaxPerBlock;
@@ -141,7 +141,7 @@ contract StaxIssuer is Ownable {
         }));
     }
 
-    // Update the given pool's Stax allocation point. Can only be called by the owner.
+    // Update the given pool's Stax allocation points. Can only be called by the owner.
     function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -161,15 +161,25 @@ contract StaxIssuer is Ownable {
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
             uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
-            for (uint i=0; i < periods; i++) {
-                accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
-                // Reduce the Multiplier by half
-                if (currentMultiplier > MinStaxPerBlock) {
-                    currentMultiplier.div(2);
-                }
-                prevEpochBlock = prevEpochBlock.add(halvingDuration);
-                }
-               
+            // halvingDuration is equivalent to the length of the period
+            // Here we iterate through the chunked periods and their corresponding multipliers to get a summation of the credits
+            // If periods is not at least 1, we skip directly to calculate the partial period duration
+            if (periods >= 1) {
+                for (uint i=0; i < periods; i++) {
+                    accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
+                    // Reduce the Multiplier by half if it's not already at the min
+                    // This assumes that the initial bonus multiplier is a factor of two, otherwise there may be some weird division errors
+                    // This is why our initial bonus multiplier is 8
+                    if (currentMultiplier > MinStaxPerBlock) {
+                        currentMultiplier.div(2);
+                    }
+                    // This increments the counter for the prevEpochblock to calculate the remainder
+                    prevEpochBlock = prevEpochBlock.add(halvingDuration);
+                    }
+            }
+            // Finally add the remainder blocks at the last currentMultiplier   
+            // the difference between _to and prevEpochBlock is the remainder blocks
+            // If periods wasn't long enough, we go straight here to calculate the accrued Credit
             accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
             return accruedBlockCredit;
             }
@@ -215,7 +225,9 @@ contract StaxIssuer is Ownable {
 
         // Instead of mint, we withdraw tokens from stax
         // Stax.mint(address(this), StaxReward);
-        // Transfers tokens from the devaddr (Dev Address must approve this distributor to allow for these tokens to be sent to the Chef)
+        // Transfers tokens from the devaddr 
+        // (Dev Address must approve this distributor to allow for these tokens to be sent to the Chef)
+        require(Stax.allowance(devaddr,address(this)) > StaxReward, "dev not enough allowance");
         Stax.transferFrom(devaddr, address(this), StaxReward);
           
         pool.accStaxPerShare = pool.accStaxPerShare.add(StaxReward.mul(1e12).div(DepositsSupply));
