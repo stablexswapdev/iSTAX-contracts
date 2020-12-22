@@ -10,7 +10,10 @@ import "./Ownable.sol";
 import './iStaxIssuer.sol';
 import './EnumerableSet.sol';
 
-contract StaxStaking is Ownable {
+// Issuer is the Chefcontract for which this contract earns rewards for.
+// poolId is from this this Issuer as well
+
+contract StaxFixedStaking is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
