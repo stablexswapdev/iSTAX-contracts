@@ -294,8 +294,8 @@ contract StaxIssuer is Ownable {
         uint256 StaxBal = Stax.balanceOf(address(this));      
         Stax.transfer(devaddr, StaxBal);
     }
-
     // Safe Stax transfer function, just in case if rounding error causes pool to not have enough Staxs.
+    // Warning, in case stax pool doesn't have enough tokens, it could potentially transfer nothing
     function safeStaxTransfer(address _to, uint256 _amount) internal {
         uint256 StaxBal = Stax.balanceOf(address(this));
         if (_amount > StaxBal) {
