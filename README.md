@@ -1,8 +1,8 @@
 # iSTAX Insurance Contracts repo
 
-We spent a significant chunk of our hackathon time preparing the framework for the FIRST native-insurance protocol built into the StableXSwap ecosystem, and plan to make this a full suite to allow other projects to offer insurance on their projects denominated in their own asset, and help drive volume on future low-impermanent loss pools for governance/insurance token pairs which should be correlated and thus have low IL!
+In this repo, we will feature a new iSTAX token, a new iSTAX staking mechanism whereby users will be able to deposit any LPTokens from our future swaps, as well as iSTAX and STAX staking to earn new iSTAX rewards.
 
-For a full write up on our insurancep plans, please visit:
+For a full write up on our insurance plans, iSTAX tokenomics, please visit (to be published to Medium later):
 https://docs.google.com/document/d/1tS28BwJYZkF4blpnlQGCSqNeQXEz7OmNAoJbQTm9t0c/edit
 
 
@@ -20,9 +20,13 @@ On the backend, the smart contract has a fundStax function that allows a multisi
 We can also do other binary markets such as StableXSwap reaching at least 4/6 of its items on its roadmap for the end of 2020! 
 The possibilities are endless. 
 
-The iSTAX insurance staking front end is still a work in progress, but the underlying contracts for the following have been deployed on testnet:
 
 
+
+----
+
+
+v0: earlier versions of these contracts were deployed on testnet:
 StaxToken
 0x869446a92293DE6cEbb1b71CfcA6bd48f6bef6fC
 
