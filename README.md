@@ -34,7 +34,11 @@ Key changes in this contract include:
 - added a MiniStaxPerBlock, which is minimum distribution per block to prevent decay from going below 1
 - the decay schedule is determined by the retooled variables: startBlock, firstBonusEndBlock, halvingDuration.
 
-From iStaxIssuer, we proceed to add pools to the iStaxIssuer contract: fixed-term staking pools require the following contracts to take in the underlying iSTAX or STAX bep20 tokens to be staked:
+iSTAX, or other liquid tokens can be staked directly in the iSTAX issuer for liquid, no-lock pools.
+The following are for locked, duration pools:
+
+For each campaign that requires a fixed duration, a corresponding pool will need to be created in the iStaxIssuer, then a corresponding insurance/fixed-staking market pool deposit contract needs to be created: either for STAX fixed-length staking or iSTAX fixed-duration coverage staking.
+Campaign tokens
 
 StaxFixedStaking.sol: for staking of STAX tokens to earn iSTAX. Need to fix to distribute accrued iSTAX rewards
 iStaxMarket.sol: for using up iSTAX token to purchase coverage in staking, where the multisig will add STAX tokens to pay out users in case of a covered event; otherwise, allow half of the collected iSTAX to be burnt and 
@@ -47,10 +51,16 @@ iStaxMarketToken.sol: insurance market campaigns
 
 StaxStakingToken.sol: staking market campaigns
 
+
 These should only be deposited by the owner of the pools into the pools - these tokens are not distributed to anyone, but they are used to make it easier to onchain label the different markets/fixed staking terms that are launched, by naming the iStaxMarketToken & StaxStakingToken with what they are staked for and their duration/term length, etc. (STAX2W staking, or iSTAXDAIUP210331)
 
+Finally, we also included this stax distributor, which will replace our current stax superchef contract.
 
 StaxDistributor.sol: a fork of the Original sushichef MasterChef contract which has been only modified to distribute STAX from the already minted control of the dev address, rather than mint new tokens. This will be used to distribute/vest STAX rewards in the future (will not be needed right away)
+
+
+*************************************
+
 
 <img src="https://github.com/stablexswapdev/insuranceRepo/raw/main/new_insurance_preview.png"> 
 
