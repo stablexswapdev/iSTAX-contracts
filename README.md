@@ -6,6 +6,52 @@ For a full write up on our insurance plans, iSTAX tokenomics, please visit (to b
 https://docs.google.com/document/d/1tS28BwJYZkF4blpnlQGCSqNeQXEz7OmNAoJbQTm9t0c/edit
 
 
+Table of Contents:
+
+Libraries:
+Address.sol,
+Context.sol,
+ERC20.sol,
+EnumerableSet.sol,
+IERC20.sol,
+Ownable.sol,
+SafeERC20.sol,
+SafeMath.sol
+
+Please deploy the remaining contracts in the following order
+
+StaxToken.sol: STAX Original Token, unedited, will not be redeployed on mainnet, only for testnet purposes. 
+
+iStaxToken.sol: the new iSTAX insurance BEP20 Token, fork of the StaxToken with cosmetic name changes. The owner of iStaxToken.sol will need to be set to the iStaxIssuer.sol which will create the new iSTAX Yield farming.
+
+iStaxIssuer.sol: The fork of the (stax Superchef.sol) Sushichef Masterchef contract, similar to https://bscscan.com/address/0xc80991f9106e26e43bf1c07c764829a85f294c71#writeContract for STAX SuperChef.
+Will be used to yield farm iSTAX. 
+
+Key changes in this contract include:
+
+- modifying to distribute iSTAX token instead of STAX token
+- modify the calculation of getMultiplier() to support a scheduled halving decay of issuance of tokens, rather than just one bonus
+- added a MiniStaxPerBlock, which is minimum distribution per block to prevent decay from going below 1
+- the decay schedule is determined by the retooled variables: startBlock, firstBonusEndBlock, halvingDuration.
+
+From iStaxIssuer, we proceed to add pools to the iStaxIssuer contract: fixed-term staking pools require the following contracts to take in the underlying iSTAX or STAX bep20 tokens to be staked:
+
+StaxFixedStaking.sol: for staking of STAX tokens to earn iSTAX. Need to fix to distribute accrued iSTAX rewards
+iStaxMarket.sol: for using up iSTAX token to purchase coverage in staking, where the multisig will add STAX tokens to pay out users in case of a covered event; otherwise, allow half of the collected iSTAX to be burnt and 
+
+Each of these contracts take in a cosmetic token (stakingToken) that is used to lock inside the iStaxIssuer (SuperChef) which only the creator has. The creator must send the owner of this cosmetic stakingToken to 0x000 to prevent future minting and any abuse of this in order for the staking contracts to work.
+
+The two types of cosmetic tokens are:
+
+iStaxMarketToken.sol: insurance market campaigns
+
+StaxStakingToken.sol: staking market campaigns
+
+These should only be deposited by the owner of the pools into the pools - these tokens are not distributed to anyone, but they are used to make it easier to onchain label the different markets/fixed staking terms that are launched, by naming the iStaxMarketToken & StaxStakingToken with what they are staked for and their duration/term length, etc. (STAX2W staking, or iSTAXDAIUP210331)
+
+
+StaxDistributor.sol: a fork of the Original sushichef MasterChef contract which has been only modified to distribute STAX from the already minted control of the dev address, rather than mint new tokens. This will be used to distribute/vest STAX rewards in the future (will not be needed right away)
+
 <img src="https://github.com/stablexswapdev/insuranceRepo/raw/main/new_insurance_preview.png"> 
 
 Front End available here: (work in progress)
