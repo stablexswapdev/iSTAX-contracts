@@ -110,6 +110,7 @@ iStaxMarket for DAIUP Insurance March 31 2021:
 
 insuranceMarkets added to the iStax issuer with 0 pool weight.
 
+StaxFixedStaking.sol and corresponding StaxStakingToken.sol will be used for fixed-term stax pools that will be used in iSTAX issuer to earn iSTAX. 
 
 
 ----
