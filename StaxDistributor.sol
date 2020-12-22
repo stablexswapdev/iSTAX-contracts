@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
-// A modification to the original Sushichef Type contract
+// A modification to the original Sushichef contract that mints and distributes stax, 
+// and adapts it for use for distribution of rewards from a static treasury wallet that 
+// has already goven allowance to this contract to distribute
+
 
 pragma solidity ^0.6.12;
 
@@ -34,7 +37,7 @@ contract StaxIssuer is Ownable {
         //   pending reward = (user.amount * pool.accStaxPerShare) - user.rewardDebt
         //
         // Whenever a user deposits or withdraws Deposits tokens to a pool. Here's what happens:
-        //   1. The pool's `accStaxPerShare` (and `lastRewardBlock`) gets updated.
+        //   1. The pool's `accStaxPerShare` (and `latestRewardBlock`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
@@ -44,7 +47,7 @@ contract StaxIssuer is Ownable {
     struct PoolInfo {
         IERC20 depositToken;           // Address of deposit token contract.
         uint256 allocPoint;       // How many allocation points (distribution weight) assigned to this pool.
-        uint256 lastRewardBlock;  // Last block number that Staxs distribution occurs.
+        uint256 latestRewardBlock;  // Latest block number that Staxs distribution occurs.
         uint256 accStaxPerShare; // Accumulated Staxs per share, times 1e12. See below.
     }
 
@@ -130,13 +133,13 @@ contract StaxIssuer is Ownable {
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+        uint256 latestRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
             // Update Pool Logic
             depositToken: _depositToken,
             allocPoint: _allocPoint,
-            lastRewardBlock: lastRewardBlock,
+            latestRewardBlock: latestRewardBlock,
             accStaxPerShare: 0
         }));
     }
@@ -191,8 +194,8 @@ contract StaxIssuer is Ownable {
         UserInfo storage user = userInfo[_pid][_user];
         uint256 accStaxPerShare = pool.accStaxPerShare;
         uint256 DepositsSupply = pool.depositToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && DepositsSupply != 0) {
-            uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        if (block.number > pool.latestRewardBlock && DepositsSupply != 0) {
+            uint256 multiplier = getMultiplier(pool.latestRewardBlock, block.number);
             uint256 StaxReward = multiplier.mul(StaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
             accStaxPerShare = accStaxPerShare.add(StaxReward.mul(1e12).div(DepositsSupply));
         }
@@ -210,15 +213,15 @@ contract StaxIssuer is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
-        if (block.number <= pool.lastRewardBlock) {
+        if (block.number <= pool.latestRewardBlock) {
             return;
         }
         uint256 DepositsSupply = pool.depositToken.balanceOf(address(this));
         if (DepositsSupply == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.latestRewardBlock = block.number;
             return;
         }
-        uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        uint256 multiplier = getMultiplier(pool.latestRewardBlock, block.number);
         uint256 StaxReward = multiplier.mul(StaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
         // removed the mint additional token to dev because this is already done in the original distributor
         // Stax.mint(devaddr, StaxReward.div(8));
@@ -231,7 +234,7 @@ contract StaxIssuer is Ownable {
         Stax.transferFrom(devaddr, address(this), StaxReward);
           
         pool.accStaxPerShare = pool.accStaxPerShare.add(StaxReward.mul(1e12).div(DepositsSupply));
-        pool.lastRewardBlock = block.number;
+        pool.latestRewardBlock = block.number;
     }
 
     // Deposit Deposits tokens to StaxIssuer for Stax allocation.

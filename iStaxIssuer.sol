@@ -36,7 +36,7 @@ contract iStaxIssuer is Ownable {
         //   pending reward = (user.amount * pool.acciStaxPerShare) - user.rewardDebt
         //
         // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `acciStaxPerShare` (and `lastRewardBlock`) gets updated.
+        //   1. The pool's `acciStaxPerShare` (and `latestRewardBlockck`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
@@ -46,7 +46,7 @@ contract iStaxIssuer is Ownable {
     struct PoolInfo {
         IERC20 depositToken;           // Address of deposit token contract.
         uint256 allocPoint;       // How many allocation points (distribution weight) assigned to this pool.
-        uint256 lastRewardBlock;  // Last block number that iStaxs distribution occurs.
+        uint256 latestRewardBlockck;  // Last block number that iStaxs distribution occurs.
         uint256 acciStaxPerShare; // Accumulated iStaxs per share, times 1e12. See below.
     }
 
@@ -129,13 +129,13 @@ contract iStaxIssuer is Ownable {
         if (_withUpdate) {
             massUpdatePools();
         }
-        uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
+        uint256 latestRewardBlockck = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
             // Update Pool Logic
             depositToken: _depositToken,
             allocPoint: _allocPoint,
-            lastRewardBlock: lastRewardBlock,
+            latestRewardBlockcklatestRewardBlocklock,
             acciStaxPerShare: 0
         }));
     }
@@ -179,8 +179,8 @@ contract iStaxIssuer is Ownable {
         UserInfo storage user = userInfo[_pid][_user];
         uint256 acciStaxPerShare = pool.acciStaxPerShare;
         uint256 lpSupply = pool.depositToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        if (block.number > pool.latestRewardBlockck && lpSupply != 0) {
+            uint256 multiplier = getMultiplier(pool.latestRewardBlockck, block.number);
             uint256 iStaxReward = multiplier.mul(iStaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
             acciStaxPerShare = acciStaxPerShare.add(iStaxReward.mul(1e12).div(lpSupply));
         }
@@ -198,20 +198,20 @@ contract iStaxIssuer is Ownable {
     // Update reward variables of the given pool to be up-to-date.
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
-        if (block.number <= pool.lastRewardBlock) {
+        if (block.number <= pool.latestRewardBlockck) {
             return;
         }
         uint256 lpSupply = pool.depositToken.balanceOf(address(this));
         if (lpSupply == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.latestRewardBlockck = block.number;
             return;
         }
-        uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
+        uint256 multiplier = getMultiplier(pool.latestRewardBlockck, block.number);
         uint256 iStaxReward = multiplier.mul(iStaxPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
         iStax.mint(devaddr, iStaxReward.div(8));
         iStax.mint(address(this), iStaxReward);
         pool.acciStaxPerShare = pool.acciStaxPerShare.add(iStaxReward.mul(1e12).div(lpSupply));
-        pool.lastRewardBlock = block.number;
+        pool.latestRewardBlockck = block.number;
     }
 
     // Deposit LP tokens to iStaxIssuer for iStax allocation.
