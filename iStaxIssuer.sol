@@ -162,7 +162,7 @@ contract iStaxIssuer is Ownable {
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
             while (currentMultiplier >= MiniStaxPerBlock) {
-                uint periods = _to.sub(_from).mod(halvingDuration).div(halvingDuration);
+                uint periods = _to.sub(_from).div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
                     accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
                     // Reduce the Multiplier by half
