@@ -3,6 +3,8 @@
 // To users who stake tokens into (mainly) fixed term liquidity pools
 pragma solidity ^0.6.12;
 
+import "./IERC20.sol";
+import "./SafeMath.sol";
 import "./iStaxToken.sol";
 import "./Ownable.sol";
 import "./SafeERC20.sol";
@@ -161,19 +163,22 @@ contract iStaxIssuer is Ownable {
             uint currentMultiplier = BONUS_MULTIPLIER;
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
-            while (currentMultiplier >= MiniStaxPerBlock) {
                 uint periods = _to.sub(_from).div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
                     accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
-                    // Reduce the Multiplier by half
-                    currentMultiplier.div(2);
+                    // Update the Multiplier by reducing half
+                    if (currentMultiplier > MiniStaxPerBlock) {
+                        currentMultiplier.div(2);
+                        }
+                    // Updates to the newest block
                     prevEpochBlock = prevEpochBlock.add(halvingDuration);
                     }
                 }
-            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
-            return accruedBlockCredit;
-            }
-    }
+        accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
+        return accruedBlockCredit;
+        }
+
+        
 
     // View function to see pending iStaxs on frontend.
     function pendingiStax(uint256 _pid, address _user) external view returns (uint256) {
