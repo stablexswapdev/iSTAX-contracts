@@ -134,12 +134,13 @@ contract iStaxIssuer is Ownable {
         
         uint256 latestRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        poolInfo.push(PoolInfo({
+        
             // Update Pool Logic
+        poolInfo.push(PoolInfo({
             depositToken: _depositToken,
             allocPoint: _allocPoint,
             latestRewardBlock: latestRewardBlock,
-            accStaxPerShare: 0
+            acciStaxPerShare: 0
         }));
 
     }
@@ -173,9 +174,10 @@ contract iStaxIssuer is Ownable {
                     // Updates to the newest block
                     prevEpochBlock = prevEpochBlock.add(halvingDuration);
                     }
-                }
-        accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
-        return accruedBlockCredit;
+            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
+            return accruedBlockCredit;
+            }
+        
         }
 
         
