@@ -4,6 +4,7 @@
 pragma solidity ^0.6.12;
 
 import "./IERC20.sol";
+import "./Math.sol";
 import "./SafeMath.sol";
 import "./iStaxToken.sol";
 import "./Ownable.sol";
@@ -157,27 +158,46 @@ contract iStaxIssuer is Ownable {
     // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
         function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
-        if (_to <= firstBonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        }
-        else {
+            
             uint currentMultiplier = BONUS_MULTIPLIER;
             uint prevEpochBlock = firstBonusEndBlock;
             uint accruedBlockCredit = 0;
-                uint periods = _to.sub(_from).div(halvingDuration);
+            // If the _from for whatever reason is prior to the start block, we will only count the blocks from the start
+            uint startAccrualBlock = Math.max(_from,startBlock);
+            
+            if (_to <= firstBonusEndBlock) {
+            return _to.sub(startAccrualBlock).mul(BONUS_MULTIPLIER);
+            }
+            
+            if (_from < firstBonusEndBlock) {
+                // Give credit for rewards accrued in the first period prior to halving
+                accruedBlockCredit = (firstBonusEndBlock.sub(startAccrualBlock)).mul(currentMultiplier);
+            }
+            // If the _from is not in the first period, the Multiplier has already reduced,
+            // so we need to calculate how much it has reduced
+            if (_from > firstBonusEndBlock) {
+                uint halvingPower =  _from.sub(firstBonusEndBlock).div(halvingDuration);
+                // This calculates if the multiplier is already at 1 or if it is at 
+                // a multiple between the initial BONUS_MULTIPLIER and 1.
+                currentMultiplier = Math.max(1, currentMultiplier.div(2 ** halvingPower));
+            }
+            // if startAccrual is after the first bonus block, we calculate how many further periods it has gone thru halvings
+            // if startAccrual is before the firstBonusEndBlock, then we already credited the partial period rewards before, and should only 
+            // calculate the time from the firstBonusEndBlock to the _to block for the remaining blockDiff.
+            uint blockDiff = _to.sub(Math.max(startAccrualBlock, firstBonusEndBlock));
+            uint periods = blockDiff.div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
                     accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
                     // Update the Multiplier by reducing half
-                    if (currentMultiplier > MiniStaxPerBlock) {
-                        currentMultiplier.div(2);
+                    if (currentMultiplier > 1) {
+                        currentMultiplier = currentMultiplier.div(2);
                         }
                     // Updates to the newest block
                     prevEpochBlock = prevEpochBlock.add(halvingDuration);
                     }
-            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(_to.sub(prevEpochBlock)));
+            uint leftoverDuration = _to.sub(prevEpochBlock);
+            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(leftoverDuration));
             return accruedBlockCredit;
-            }
-        
         }
 
         
