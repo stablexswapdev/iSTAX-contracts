@@ -164,11 +164,11 @@ contract iStaxIssuer is Ownable {
             uint accruedBlockCredit = 0;
             // If the _from for whatever reason is prior to the start block, we will only count the blocks from the start
             uint startAccrualBlock = Math.max(_from,startBlock);
-            
+            // If to before firstBonusEndBlock, The rewards all end without bonus multiplier even changing
             if (_to <= firstBonusEndBlock) {
             return _to.sub(startAccrualBlock).mul(BONUS_MULTIPLIER);
             }
-            
+            // Otherwise, if the from predates the first bonusBlock, we give credit for this period first
             if (_from < firstBonusEndBlock) {
                 // Give credit for rewards accrued in the first period prior to halving
                 accruedBlockCredit = (firstBonusEndBlock.sub(startAccrualBlock)).mul(currentMultiplier);
@@ -178,12 +178,16 @@ contract iStaxIssuer is Ownable {
             if (_from > firstBonusEndBlock) {
                 uint halvingPower =  _from.sub(firstBonusEndBlock).div(halvingDuration);
                 // This calculates if the multiplier is already at 1 or if it is at 
-                // a multiple between the initial BONUS_MULTIPLIER and 1.
+                // a multiple somewhere between the initial BONUS_MULTIPLIER and 1.
                 currentMultiplier = Math.max(1, currentMultiplier.div(2 ** halvingPower));
             }
             // if startAccrual is after the first bonus block, we calculate how many further periods it has gone thru halvings
             // if startAccrual is before the firstBonusEndBlock, then we already credited the partial period rewards before, and should only 
             // calculate the time from the firstBonusEndBlock to the _to block for the remaining blockDiff.
+            
+            // one more case on if startAccrualBlock is > than firstBonusEndBlock, then we need to find how much of the starting part it has
+            
+
             uint blockDiff = _to.sub(Math.max(startAccrualBlock, firstBonusEndBlock));
             uint periods = blockDiff.div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
