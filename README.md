@@ -43,7 +43,9 @@ Campaign tokens
 StaxFixedStaking.sol: for staking of STAX tokens to earn iSTAX. Need to fix to distribute accrued iSTAX rewards
 iStaxMarket.sol: for using up iSTAX token to purchase coverage in staking, where the multisig will add STAX tokens to pay out users in case of a covered event; otherwise, allow half of the collected iSTAX to be burnt and 
 
-Each of these contracts take in a cosmetic token (stakingToken) that is used to lock inside the iStaxIssuer (SuperChef) which only the creator has. The creator must send the owner of this cosmetic stakingToken to 0x000 to prevent future minting and any abuse of this in order for the staking contracts to work.
+Each of these contracts take in a cosmetic token (stakingToken) that is used to lock inside the iStaxIssuer (SuperChef) which only the creator has. The creator must send the owner of this cosmetic stakingToken to 0x000 to prevent future minting and any abuse of this in order for the staking contracts to work. 
+
+Thus, we need to first deploy a corresponding market or staking Token before deploying the pool contract above.
 
 The two types of cosmetic tokens are:
 
@@ -77,6 +79,38 @@ We can also do other binary markets such as StableXSwap reaching at least 4/6 of
 The possibilities are endless. 
 
 
+-
+v0.5 - deployed on bsc testnet
+Stax Token
+0xB9903d297F92b813b8198Ef80Fc41632BEbDdDab
+iSTAX token
+0xAE69d3ff1352bb8c406AfFAd9dCEC0b44dd72275
+
+iStaxIssuer 0x55F88F68Aa3fb0148e5BbED29F2aef196011CF8E 
+ deployed  with following constructor:
+{_ISTAX:
+0x29f5b2959c1b0FE96985799Bd2E6c36187A16Ff1,
+_DEVADDR:
+0x7323B13669028780c6450A620064E30654a5Be2c,
+_ISTAXPERBLOCK:
+8,
+_MINISTAXPERBLOCK:
+1,
+_STARTBLOCK:
+4724500,
+_FIRSTBONUSENDBLOCK:
+5724500,
+_HALVINGDURATION:
+1000000}
+
+
+iStaxMarketToken: 0x74DEbF4cBE6A9dA18D89b0C2825Fac080076891B
+iStaxMarket for DAIUP Insurance March 31 2021: 
+0xd7E7057518cE02879ab0d1603DB119Bd3c466d20
+
+insuranceMarkets added to the iStax issuer with 0 pool weight.
+
+StaxFixedStaking.sol and corresponding StaxStakingToken.sol will be used for fixed-term stax pools that will be used in iSTAX issuer to earn iSTAX. 
 
 
 ----
