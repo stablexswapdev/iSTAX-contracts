@@ -6,7 +6,7 @@
 
 pragma solidity ^0.6.12;
 
-import ".StaxToken.sol";
+import "./StaxToken.sol";
 import "./Ownable.sol";
 import "./SafeERC20.sol";
 
