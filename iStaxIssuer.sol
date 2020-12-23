@@ -180,15 +180,18 @@ contract iStaxIssuer is Ownable {
                 // This calculates if the multiplier is already at 1 or if it is at 
                 // a multiple somewhere between the initial BONUS_MULTIPLIER and 1.
                 currentMultiplier = Math.max(1, currentMultiplier.div(2 ** halvingPower));
+                uint gap = _from.sub(firstBonusEndBlock);
+                uint firstPartialBlockPeriod = halvingDuration.sub(gap.mod(halvingDuration));
+                accruedBlockCredit = firstPartialBlockPeriod.mul(currentMultiplier);
+                startAccrualBlock = startAccrualBlock.add((halvingPower.add(1)).mul(halvingDuration));
             }
-            // if startAccrual is after the first bonus block, we calculate how many further periods it has gone thru halvings
+            // Adjusted StartAccrualBlock to the first full epoch, which is iether the firstBonusEndBlock, or a multiple of the halvingDuration 
+            // After the firstBonusEndBlock. 
+            // if startAccrual is after the first bonus block, we calculate how many further full periods it has gone thru halvings
             // if startAccrual is before the firstBonusEndBlock, then we already credited the partial period rewards before, and should only 
-            // calculate the time from the firstBonusEndBlock to the _to block for the remaining blockDiff.
-            
-            // one more case on if startAccrualBlock is > than firstBonusEndBlock, then we need to find how much of the starting part it has
-            
-
+            // calculate the additional accured value from future epochs.
             uint blockDiff = _to.sub(Math.max(startAccrualBlock, firstBonusEndBlock));
+            // Handle the full periods
             uint periods = blockDiff.div(halvingDuration);
                 for (uint i=0; i < periods; i++) {
                     accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
