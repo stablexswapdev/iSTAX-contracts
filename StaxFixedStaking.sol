@@ -32,7 +32,7 @@ contract StaxFixedStaking is Ownable {
 
     mapping (address => uint256) public poolsInfo;
     mapping (address => uint256) public preRewardAllocation;
-    EnumerableSet public addressList;
+    EnumerableSet public addressSet;
 
     // Declare a set state variable
     EnumerableSet.AddressSet private addressSet;

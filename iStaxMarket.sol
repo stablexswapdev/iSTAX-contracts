@@ -15,14 +15,14 @@ contract iSTAXmarket is Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public startCoverageBlock;
-    uint256 public matureBlock;
-    uint256 public poolId;
+    uint256 public immutable startCoverageBlock;
+    uint256 public immutable matureBlock; // Set matureBlock to 0 if it is a market that could expire early.
+    uint256 public immutable poolId;
 
-    iStaxIssuer public issuer;
-    IERC20 public stax;
-    IERC20 public iStax;
-    IERC20 public iStaxMarketToken;
+    iStaxIssuer public immutable issuer;
+    IERC20 public immutable stax;
+    IERC20 public immutable iStax;
+    IERC20 public immutable iStaxMarketToken;
 
     uint256 public totalDeposited;
     uint256 public coverageOutstanding;
@@ -100,10 +100,10 @@ contract iSTAXmarket is Ownable {
     }
 
     // A redeem function to wipe out staked insurance token and redeem for rewards token from issuer.
-    function redeem() public {
+    function redeem() external {
         // Cannot redeem if this market has no value of coverage - paid by fundStax
         require (coverageOutstanding > 0, 'no redemption value');
-        // require (block.number > matureBlock, 'not redemption time');
+        require (block.number > matureBlock, 'not redemption time');
         // Amount that can be claimed from the contract needs to be reduced by the amount redeemed
         uint256 claim = poolsInfo[msg.sender];
         uint256 currentTotal = totalDeposited;
@@ -123,32 +123,35 @@ contract iSTAXmarket is Ownable {
 
     // Function for the multisig to cash in the deposited iSTAX Insurance tokens and simultaneously burn half
     // Important, only the multisig Owner can call this function, otherwise other people could get the iSTAX.
-    function cash(uint256 _amount) public onlyOwner {
+    function cash() external onlyOwner {
+        uint iStaxBal = iStax.balanceOf(address(this));
         // Require the cash amount to be less than the amount totally deposited
-        require(totalDeposited >= _amount, "cash too large");
+        require(iStaxBal > 1, "not enough cash");
         // Split the _amount to be cashed out in half.
-        uint256 burnAmount = _amount.div(2);
-        // Check if we need a spend allowance from this contract, but should be OK
-        iStax.safeTransfer(address(msg.sender), burnAmount);
+        uint256 halfAmount = iStaxBal.div(2);
+        // Check if we need a spend allowance from this contract, but should be OK with safe transfer
+        iStax.safeTransfer(address(msg.sender), halfAmount);
         // This Burns the remaining half of the amount
-        iStax.safeTransfer(address(0), burnAmount);
-        emit Cash(msg.sender, _amount);
+        iStax.safeTransfer(address(0), halfAmount);
+        emit Cash(msg.sender, amount);
     }
 
-    // EMERGENCY ONLY - withdraw any stax sent in to this address. 
+    // EMERGENCY ONLY - withdraw all stax sent in to this address. 
     // Note to owner: Please make sure not to send in any assets that are not STAX
-    function emergencyWithdraw(uint256 _amount) public onlyOwner {
-        stax.safeTransfer(address(msg.sender), _amount);
-        emit EmergencyWithdraw(msg.sender, _amount);
+    function emergencyWithdraw() external onlyOwner {
+        coverageOutstanding = 0;
+        uint staxBal = stax.balanceOf(address(this));
+        stax.safeTransfer(address(msg.sender), staxBal);
+        emit EmergencyWithdraw(msg.sender, staxBal);
     }
 
-    function depositToissuer(uint256 _amount) public onlyOwner {
+    function depositToIssuer(uint256 _amount) external onlyOwner {
         iStaxMarketToken.safeApprove(address(issuer), _amount);
         issuer.deposit(poolId, _amount);
     }
 
     // This is to allow Issuer to collect the rewards for the issuer? 
-    function harvestFromissuer() public onlyOwner {
+    function harvestFromIssuer() external onlyOwner {
         issuer.deposit(poolId, 0);
         
     }
