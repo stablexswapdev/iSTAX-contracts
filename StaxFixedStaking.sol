@@ -3,12 +3,12 @@
 
 pragma solidity 0.6.12;
 
-import "./IERC20.sol";
-import "./SafeERC20.sol";
-import "./SafeMath.sol";
-import "./Ownable.sol";
+import "./lib/IERC20.sol";
+import "./lib/SafeERC20.sol";
+import "./lib/SafeMath.sol";
+import "./lib/Ownable.sol";
 import './iStaxIssuer.sol';
-import './EnumerableSet.sol';
+import './lib/EnumerableSet.sol';
 
 // Issuer is the Chefcontract for which this contract earns rewards for.
 // poolId is from this this Issuer as well

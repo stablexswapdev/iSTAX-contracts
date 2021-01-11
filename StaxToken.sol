@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./ERC20.sol";
-import "./Ownable.sol";
+import "./lib/ERC20.sol";
+import "./lib/Ownable.sol";
 
 contract StaxToken is ERC20("StableX Token", "STAX"), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).

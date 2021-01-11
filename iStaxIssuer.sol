@@ -3,12 +3,12 @@
 // To users who stake tokens into (mainly) fixed term liquidity pools
 pragma solidity ^0.6.12;
 
-import "./IERC20.sol";
-import "./Math.sol";
-import "./SafeMath.sol";
+import "./lib/IERC20.sol";
+import "./lib/Math.sol";
+import "./lib/SafeMath.sol";
 import "./iStaxToken.sol";
-import "./Ownable.sol";
-import "./SafeERC20.sol";
+import "./lib/Ownable.sol";
+import "./lib/SafeERC20.sol";
 
 
 interface IMigratorChef {

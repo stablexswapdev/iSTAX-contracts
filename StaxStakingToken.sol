@@ -2,8 +2,8 @@
 
 pragma solidity 0.6.12;
 
-import "./ERC20.sol";
-import "./Ownable.sol";
+import "./lib/ERC20.sol";
+import "./lib/Ownable.sol";
 
 // This contract is used really only for superficial purposes so that it's easier to see which pool is which
 // Tokens are actually held in the StaxStaking.sol contract

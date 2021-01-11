@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./ERC20.sol";
-import "./Ownable.sol";
+import "./lib/ERC20.sol";
+import "./lib/Ownable.sol";
 
 
 // We plan to first issue this token with a certain supply distributed out to be able to keep aside for a few categories.
