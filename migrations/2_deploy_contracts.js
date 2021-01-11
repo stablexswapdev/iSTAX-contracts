@@ -17,7 +17,7 @@ await deployer.deploy(iStaxIssuer, iStaxAddress, devAddress, 8, 1, 250000, 25000
 const iStaxChef = await iStaxIssuer.deployed();
 const iStaxChefAddress = iStaxChef.address;
 
-// 
+
 
 //   Sample: deploys three different durations of staking dummy tokens, and mints 1 wei to the owner
   await deployer.deploy(stakingToken, 'StableX Staking Token', 'STAX2W', numAsHex)
@@ -27,13 +27,11 @@ const iStaxChefAddress = iStaxChef.address;
   await deployer.deploy(stakingToken, 'StableX Staking Token', 'STAX1Y', numAsHex)
   const oneyearStake = await stakingToken.deployed();
 
-
 // Already Deployed addresses input here
 const stakingDurationTokenAddress = twoWeekStake.address;
 const staxAddress = '0x0Da6Ed8B13214Ff28e9Ca979Dd37439e8a88F6c4' // This is only for mainnet, may need to toggle for testnet
-const iStaxAddress = ''
 
-  await deployer.deploy(iStaxMarket, iStaxIssuerAddress, staxAddress ,iStaxAddress , stakingDurationTokenAddress,'1903600', '2306800','5')
+  await deployer.deploy(iStaxMarket, iStaxChefAddress, staxAddress ,iStaxAddress , stakingDurationTokenAddress,'1903600', '2306800','0')
   const chef1 = await iStaxMarket.deployed();
   const stakingToken1 = await stakingToken.at(stakingDurationTokenAddress)
   await stakingToken1.mint(chef1.address, '1')
