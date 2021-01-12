@@ -133,7 +133,7 @@ contract iSTAXmarket is Ownable {
         iStax.safeTransfer(address(msg.sender), halfAmount);
         // This Burns the remaining half of the amount
         iStax.safeTransfer(address(0), halfAmount);
-        emit Cash(msg.sender, amount);
+        emit Cash(msg.sender, iStaxBal);
     }
 
     // EMERGENCY ONLY - withdraw all stax sent in to this address. 
