@@ -32,7 +32,7 @@ contract StaxFixedStaking is Ownable {
 
     mapping (address => uint256) public poolsInfo;
     mapping (address => uint256) public preRewardAllocation;
-    EnumerableSet public addressSet;
+    // EnumerableSet public addressSet;
 
     // Declare a set state variable
     EnumerableSet.AddressSet private addressSet;
@@ -42,7 +42,7 @@ contract StaxFixedStaking is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 amount);
 
     constructor(
-        iStaxissuer _issuer,
+        iStaxIssuer _issuer,
         IERC20 _stax,
         IERC20 _iStax,
         IERC20 _stakingToken,
