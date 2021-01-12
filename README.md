@@ -1,5 +1,13 @@
 # iSTAX Insurance Contracts repo
 
+
+### yarn install
+
+### yarn compile
+
+### yarn migrate
+
+
 In this repo, we will feature a new iSTAX token, a new iSTAX staking mechanism whereby users will be able to deposit any LPTokens from our future swaps, as well as iSTAX and STAX staking to earn new iSTAX rewards.
 
 For a full write up on our insurance plans, iSTAX tokenomics, please visit (to be published to Medium later):
