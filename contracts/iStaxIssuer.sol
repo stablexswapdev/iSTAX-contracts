@@ -74,7 +74,7 @@ contract iStaxIssuer is Ownable {
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    // The block number when iStax mining starts.
+    // The block number when iStax mining starts & protocol is
     uint256 public startBlock;
     // The number of blocks between halvings
     uint256 public halvingDuration;
@@ -154,59 +154,43 @@ contract iStaxIssuer is Ownable {
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
         poolInfo[_pid].allocPoint = _allocPoint;
     }
-
-    // Return reward multiplier over the given _from to _to block.
+   // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
-        function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
-            
-            uint currentMultiplier = BONUS_MULTIPLIER;
-            uint prevEpochBlock = firstBonusEndBlock;
-            uint accruedBlockCredit = 0;
-            // If the _from for whatever reason is prior to the start block, we will only count the blocks from the start
-            uint startAccrualBlock = Math.max(_from,startBlock);
-            // If to before firstBonusEndBlock, The rewards all end without bonus multiplier even changing
-            if (_to <= firstBonusEndBlock) {
-            return _to.sub(startAccrualBlock).mul(BONUS_MULTIPLIER);
-            }
-            // Otherwise, if the from predates the first bonusBlock, we give credit for this period first
-            if (_from < firstBonusEndBlock) {
-                // Give credit for rewards accrued in the first period prior to halving
-                accruedBlockCredit = (firstBonusEndBlock.sub(startAccrualBlock)).mul(currentMultiplier);
-            }
-            // If the _from is not in the first period, the Multiplier has already reduced,
-            // so we need to calculate how much it has reduced
-            if (_from > firstBonusEndBlock) {
-                uint halvingPower =  _from.sub(firstBonusEndBlock).div(halvingDuration);
-                // This calculates if the multiplier is already at 1 or if it is at 
-                // a multiple somewhere between the initial BONUS_MULTIPLIER and 1.
-                currentMultiplier = Math.max(1, currentMultiplier.div(2 ** halvingPower));
-                uint gap = _from.sub(firstBonusEndBlock);
-                uint firstPartialBlockPeriod = halvingDuration.sub(gap.mod(halvingDuration));
-                accruedBlockCredit = firstPartialBlockPeriod.mul(currentMultiplier);
-                startAccrualBlock = startAccrualBlock.add((halvingPower.add(1)).mul(halvingDuration));
-            }
-            // Adjusted StartAccrualBlock to the first full epoch, which is iether the firstBonusEndBlock, or a multiple of the halvingDuration 
-            // After the firstBonusEndBlock. 
-            // if startAccrual is after the first bonus block, we calculate how many further full periods it has gone thru halvings
-            // if startAccrual is before the firstBonusEndBlock, then we already credited the partial period rewards before, and should only 
-            // calculate the additional accured value from future epochs.
-            uint blockDiff = _to.sub(Math.max(startAccrualBlock, firstBonusEndBlock));
-            // Handle the full periods
-            uint periods = blockDiff.div(halvingDuration);
-                for (uint i=0; i < periods; i++) {
-                    accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(halvingDuration));
-                    // Update the Multiplier by reducing half
-                    if (currentMultiplier > 1) {
-                        currentMultiplier = currentMultiplier.div(2);
-                        }
-                    // Updates to the newest block
-                    prevEpochBlock = prevEpochBlock.add(halvingDuration);
-                    }
-            uint leftoverDuration = _to.sub(prevEpochBlock);
-            accruedBlockCredit = accruedBlockCredit.add(currentMultiplier.mul(leftoverDuration));
-            return accruedBlockCredit;
-        }
+      function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accuredAmount) {
 
+          uint256 currStart = Math.max(_from, startBlock); // if startBlock is less than _from, start from _from to accrue value.
+          uint256 currEnd = firstBonusEndBlock; // first page
+          uint256 currMultiplier = BONUS_MULTIPLIER;
+          uint256 currAmount = 0;
+          uint finalEnd = Math.min(_to, block.number);
+          bool isDone = false; //
+
+          if (currStart < currEnd) {
+              isDone, currAmount += _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
+              if (isDone) { return; }
+              currStart = firstBonusEndBlock;
+              currEnd = firstBonusEndBlock.add(halvingDuration).sub(1)b;
+              accruedAmount = accruedAmount.add(currAmount);
+          }
+
+          while(!isDone) {
+              isDone, accruedAmount = _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
+              currMultiplier = currMultiplier.div(2);
+              currStart = currStart.add(halvingDuration);
+              currEnd = currMultiplier == 1 ? finalEnd : currEnd.add(halvingDuration);
+              accruedAmount += currAmount;
+          }
+
+          return 
+      }
+
+      function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _finalEnd, uint256 _multiplier) internal view returns (bool, uint) {
+        //   currEnd + 
+          return (
+            _currEnd >= _finalEnd,
+            Math.min(_currEnd, _finalEnd).sub(_currStart).mul(_multiplier)
+          )
+      }
         
 
     // View function to see pending iStaxs on frontend.
