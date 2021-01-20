@@ -156,22 +156,27 @@ contract iStaxIssuer is Ownable {
     }
    // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
-      function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accuredAmount) {
+      function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accruedAmount) {
 
           uint256 currStart = Math.max(_from, startBlock); // if startBlock is less than _from, start from _from to accrue value.
           uint256 currEnd = firstBonusEndBlock; // first page
-          uint256 currMultiplier = BONUS_MULTIPLIER;
+          uint256 currMultiplier = BONUS_MULTIPLIER; // Default starts us with the bonus multiplier
           uint256 currAmount = 0;
           uint finalEnd = Math.min(_to, block.number);
-          bool isDone = false; //
+          bool isDone = false; //this is when we break and return the accruedAmount
 
           if (currStart < currEnd) {
+            //   we are in the stage where we still ahve the bonus multiplier
               isDone, currAmount += _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
               if (isDone) { return; }
               currStart = firstBonusEndBlock;
               currEnd = firstBonusEndBlock.add(halvingDuration).sub(1)b;
               accruedAmount = accruedAmount.add(currAmount);
           }
+
+        //   Need to access which epoch we are in to adjust currMultiplier
+        //  distance = currStart.mod(firstBonusEndBlock)
+        //  distance.div(halvingDuration) trunc? = how many times multiplier have halved ,check 2 - power to see min 1 to update startingMultiplier
 
           while(!isDone) {
               isDone, accruedAmount = _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
