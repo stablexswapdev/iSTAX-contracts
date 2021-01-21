@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
-// In this contract we create a new Issuer contract that mints and distributes the new iSTAX token
+// In this contract we create a new Issuer contract that mints and distributes the new iSTAX insurance token
 // To users who stake tokens into (mainly) fixed term liquidity pools
+// Pools in this contract will be both used for staking other assets such as STAX or stablex LP tokens to earn iSTAX
+// As well as 
 pragma solidity ^0.6.12;
 
 import "./lib/IERC20.sol";
@@ -55,11 +57,11 @@ contract iStaxIssuer is Ownable {
 
     // The iStax TOKEN!
     iStaxToken public iStax;
-    // Dev address.
+    // Dev address (receives fees)
     address public devaddr;
     // Block number when first bonus iStax period ends.
     uint256 public firstBonusEndBlock;
-    // iStax tokens created per block.
+    // iStax tokens created per block (suggested 2, will be multiplied by BONUS_MULTIPLIER)
     uint256 public constant iStaxPerBlock = 2;
     // minimum iSTAX tokens created per block (suggested 1)
       uint256 public constant MiniStaxPerBlock = 1;
@@ -143,10 +145,13 @@ contract iStaxIssuer is Ownable {
     }
 
     // Update the given pool's iStax allocation point. Can only be called by the owner.
+    // This can be used to adjust the reward rate for any pool after it has been created 
+    // Sucha as to increase or decrease a pool's reward in response to the TVL in the pool.
     function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
+        // replaces the old allocation weight and adds new one to the total and rewrites the pools allocPoint
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
         poolInfo[_pid].allocPoint = _allocPoint;
     }
@@ -207,7 +212,8 @@ contract iStaxIssuer is Ownable {
     }
 
 
-    // View function to see pending iStaxs on frontend.
+    // This function is only used as a View function to see pending iStaxs on frontend.
+
     function pendingiStax(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
@@ -222,6 +228,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
+    // no changes from Sushi
     function massUpdatePools() public {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
@@ -230,6 +237,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Update reward variables of the given pool to be up-to-date.
+    // no changes from Sushi
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.latestRewardBlock) {
@@ -249,6 +257,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Deposit LP tokens to iStaxIssuer for iStax allocation.
+    // no changes from Sushi
     function deposit(uint256 _pid, uint256 _amount) external {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -273,7 +282,7 @@ contract iStaxIssuer is Ownable {
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
-        require(user.amount >= _amount, "withdraw: not good");
+        require(user.amount >= _amount, "withdraw too much");
         updatePool(_pid);
         uint256 pending = user.amount.mul(pool.acciStaxPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
@@ -314,4 +323,6 @@ contract iStaxIssuer is Ownable {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
     }
+
+    // In the future, consider having a feature to help rescue funds accidentally sent here
 }
