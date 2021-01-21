@@ -19,10 +19,10 @@ interface IMigratorChef {
     //
     // Migrator must have allowance access to Old StableXswap tokens.
     // the new Swap's LP must mint EXACTLY the same amount of LP tokens or
-    // else something bad will happen. 
+    // else something bad will happen.
     function migrate(IERC20 token) external returns (IERC20);
 }
-                         
+
 
 contract iStaxIssuer is Ownable {
     using SafeMath for uint256;
@@ -60,9 +60,9 @@ contract iStaxIssuer is Ownable {
     // Block number when first bonus iStax period ends.
     uint256 public firstBonusEndBlock;
     // iStax tokens created per block.
-    uint256 public iStaxPerBlock;
-    // min iSTAX tokens created per block 
-      uint256 public MiniStaxPerBlock;
+    uint256 public constant iStaxPerBlock = 2;
+    // minimum iSTAX tokens created per block (suggested 1)
+      uint256 public constant MiniStaxPerBlock = 1;
     // Bonus muliplier for early iStax earners.
     uint256 public constant BONUS_MULTIPLIER = 8;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
@@ -72,9 +72,9 @@ contract iStaxIssuer is Ownable {
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
-    // Total allocation poitns. Must be the sum of all allocation points in all pools.
+    // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    // The block number when iStax mining starts & protocol is
+    // The block number when iStax mining starts. // startblock = when protocol is first launched
     uint256 public startBlock;
     // The number of blocks between halvings
     uint256 public halvingDuration;
@@ -87,19 +87,15 @@ contract iStaxIssuer is Ownable {
     constructor(
         iStaxToken _iStax,
         address _devaddr,
-        uint256 _iStaxPerBlock,
-        uint256 _MiniStaxPerBlock,
         uint256 _startBlock,
         uint256 _firstBonusEndBlock,
         uint256 _halvingDuration
     ) public {
         iStax = _iStax;
         devaddr = _devaddr;
-        iStaxPerBlock = _iStaxPerBlock;
-        MiniStaxPerBlock = _MiniStaxPerBlock;
+        startBlock = _startBlock;
         firstBonusEndBlock = _firstBonusEndBlock;
         halvingDuration = _halvingDuration;
-        startBlock = _startBlock;
     }
 
     // Set the migrator contract. Can only be called by the owner.
@@ -132,10 +128,10 @@ contract iStaxIssuer is Ownable {
         if (_withUpdate) {
             massUpdatePools();
         }
-        
+
         uint256 latestRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        
+
             // Update Pool Logic
         poolInfo.push(PoolInfo({
             depositToken: _depositToken,
@@ -154,49 +150,62 @@ contract iStaxIssuer is Ownable {
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
         poolInfo[_pid].allocPoint = _allocPoint;
     }
-   // Return reward multiplier over the given _from to _to block.
+
+
+    // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
-      function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accruedAmount) {
+    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accruedAmount) {
 
-          uint256 currStart = Math.max(_from, startBlock); // if startBlock is less than _from, start from _from to accrue value.
-          uint256 currEnd = firstBonusEndBlock; // first page
-          uint256 currMultiplier = BONUS_MULTIPLIER; // Default starts us with the bonus multiplier
-          uint256 currAmount = 0;
-          uint finalEnd = Math.min(_to, block.number);
-          bool isDone = false; //this is when we break and return the accruedAmount
+        require(_from <= _to, "impossible timerange");
+        uint256 endRewardsBlock = firstBonusEndBlock.add(halvingDuration.mul(BONUS_MULTIPLIER.mod(2)) // Assume bonus multiplier will be a multiple of 2
+            );
 
-          if (currStart < currEnd) {
-            //   we are in the stage where we still ahve the bonus multiplier
-              isDone, currAmount += _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
-              if (isDone) { return; }
-              currStart = firstBonusEndBlock;
-              currEnd = firstBonusEndBlock.add(halvingDuration).sub(1)b;
-              accruedAmount = accruedAmount.add(currAmount);
-          }
+        if (_from > endRewardsBlock) { // Expect this to be the most used logic so execute first for gas savings
+            (, accruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1);
+            return;
+        }
 
-        //   Need to access which epoch we are in to adjust currMultiplier
-        //  distance = currStart.mod(firstBonusEndBlock)
-        //  distance.div(halvingDuration) trunc? = how many times multiplier have halved ,check 2 - power to see min 1 to update startingMultiplier
+        uint256 currEnd;
+        uint256 currMultiplier;
+        uint256 currAmount;
+        uint256 currStart = Math.max(_from, startBlock);
+        uint256 absoluteEnd = Math.min(_to, block.number);
+        bool isDone = false;
 
-          while(!isDone) {
-              isDone, accruedAmount = _getMultiplierHelperFunction(currStart, currEnd, finalEnd, currMultiplier);
-              currMultiplier = currMultiplier.div(2);
-              currStart = currStart.add(halvingDuration);
-              currEnd = currMultiplier == 1 ? finalEnd : currEnd.add(halvingDuration);
-              accruedAmount += currAmount;
-          }
+        if (currStart < firstBonusEndBlock) {
+            // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is still the initial value
+            (isDone, currAmount) += _getMultiplierHelperFunction(currStart, firstBonusEndBlock-1, absoluteEnd, BONUS_MULTIPLIER);
+            if (isDone) { return; }
+            currMultiplier = BONUS_MULTIPLIER;
+            currStart = firstBonusEndBlock;
+            currEnd = firstBonusEndBlock.add(halvingDuration).sub(1);
+            accruedAmount = currAmount;
+        } else {
+            // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
+            uint256 numHalvingEpochsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration);
+            currMultiplier = Math.max(1, currentMultiplier.div((2 ** numHalvingDurations)));
+            currEnd = currStart.add(halvingDuration.mul(numHalvingEpochsPassed)).sub(1);
+        }
 
-          return 
-      }
+        while(!isDone) {
+            // Iterate through to accrue more value 
+            (isDone, accruedAmount) = _getMultiplierHelperFunction(currStart, currEnd, absoluteEnd, currMultiplier);
+            currMultiplier = currMultiplier.div(2);
+            currStart = currStart.add(halvingDuration);
+            currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration);
+            accruedAmount = accruedAmount.add(currAmount);
+        }
 
-      function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _finalEnd, uint256 _multiplier) internal view returns (bool, uint) {
-        //   currEnd + 
-          return (
-            _currEnd >= _finalEnd,
-            Math.min(_currEnd, _finalEnd).sub(_currStart).mul(_multiplier)
-          )
-      }
-        
+        return;
+    }
+    // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
+    function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal view returns (bool, uint) {
+        return (
+          _currEnd >= _absoluteEnd,
+          Math.min(_currEnd, __absoluteEnd).sub(_currStart).mul(_multiplier)
+        );
+    }
+
 
     // View function to see pending iStaxs on frontend.
     function pendingiStax(uint256 _pid, address _user) external view returns (uint256) {
@@ -287,7 +296,7 @@ contract iStaxIssuer is Ownable {
         user.rewardDebt = 0;
         pool.depositToken.safeTransfer(address(msg.sender), amount);
         emit EmergencyWithdraw(msg.sender, _pid, amount);
-        
+
     }
 
     // Safe iStax transfer function, just in case if rounding error causes pool to not have enough iStaxs.
