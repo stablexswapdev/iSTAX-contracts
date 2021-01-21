@@ -189,9 +189,10 @@ contract iStaxIssuer is Ownable {
             accruedAmount = currAmount;
         } else {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
-            uint256 numHalvingEpochsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration);
-            currMultiplier = Math.max(1, currentMultiplier.div((2 ** numHalvingDurations)));
-            currEnd = currStart.add(halvingDuration.mul(numHalvingEpochsPassed)).sub(1);
+            uint256 numHalvingDurationsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration); // Truncates during division
+            currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed)));
+            // TO-DO Check why sub1 here
+            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed)).sub(1);
         }
 
         while(!isDone) {
