@@ -2,7 +2,8 @@
 // In this contract we create a new Issuer contract that mints and distributes the new iSTAX insurance token
 // To users who stake tokens into (mainly) fixed term liquidity pools
 // Pools in this contract will be both used for staking other assets such as STAX or stablex LP tokens to earn iSTAX
-// As well as 
+// As well as insurance markets (which may be incentivised or unincentivised, depending onthe allocPoint assigned to them
+// We may start with a small small reward on insurance markets first)
 pragma solidity ^0.6.12;
 
 import "./lib/IERC20.sol";
