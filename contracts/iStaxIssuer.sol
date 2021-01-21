@@ -120,12 +120,14 @@ contract iStaxIssuer is Ownable {
     }
 
     // useful to check how many pools exist
+    // no change from sushi
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
     // Add a new Token to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do and split
+    //  No change from Sushi
     function add(uint256 _allocPoint, IERC20 _depositToken, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -193,7 +195,10 @@ contract iStaxIssuer is Ownable {
         }
 
         while(!isDone) {
-            // Iterate through to accrue more value 
+            // Iterate through to accrue the values to the accruedAmount that is eventually returned
+            // Each time we iterate, we have to reduce the multiplier by 2 to simulate the halving.
+            // We then adjust the next start-time range to add the halvingDuration, and 
+            // check if the multiplier has reached 1 yet.
             (isDone, accruedAmount) = _getMultiplierHelperFunction(currStart, currEnd, absoluteEnd, currMultiplier);
             currMultiplier = currMultiplier.div(2);
             currStart = currStart.add(halvingDuration);
@@ -203,11 +208,12 @@ contract iStaxIssuer is Ownable {
 
         return;
     }
+    // Helper function that returns both a boolean of whether or not we've reached the end, and a reward calculator for the duration * multiplier
     // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
     function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal view returns (bool, uint) {
         return (
           _currEnd >= _absoluteEnd,
-          Math.min(_currEnd, __absoluteEnd).sub(_currStart).mul(_multiplier)
+          Math.min(_currEnd, _absoluteEnd).sub(_currStart).mul(_multiplier)
         );
     }
 
@@ -256,7 +262,7 @@ contract iStaxIssuer is Ownable {
         pool.latestRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to iStaxIssuer for iStax allocation.
+    // Deposit LP tokens to iStaxIssuer to earn iStax allocation via mining.
     // no changes from Sushi
     function deposit(uint256 _pid, uint256 _amount) external {
         PoolInfo storage pool = poolInfo[_pid];
@@ -278,7 +284,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Withdraw LP or other tokens from iSTAXissuer.
-    // Fixed to prevent reentrancy
+    // Fixed from previous version to prevent reentrancy
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -296,7 +302,8 @@ contract iStaxIssuer is Ownable {
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
-    // Withdraw without caring about rewards. EMERGENCY ONLY.
+    // Users may call this Withdraw without caring about rewards. EMERGENCY ONLY.
+    // Accrued rewards are lost when this option is chosen.
     function emergencyWithdraw(uint256 _pid) external {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -309,6 +316,7 @@ contract iStaxIssuer is Ownable {
     }
 
     // Safe iStax transfer function, just in case if rounding error causes pool to not have enough iStaxs.
+    // Utilised by the pool itself (hence internal) to transfer funds to the miners.
     function safeiStaxTransfer(address _to, uint256 _amount) internal {
         uint256 iStaxBal = iStax.balanceOf(address(this));
         if (_amount > iStaxBal) {

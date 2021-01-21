@@ -2,6 +2,13 @@
 # yarn lockfile v1
 
 
+"@audits/truffle-test-generator@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@audits/truffle-test-generator/-/truffle-test-generator-1.0.1.tgz#010b74ae985745c7f019fdbb50d16d1765e4750f"
+  integrity sha512-siK9wk6spokz3upwXzxn13FmC0PzUjl1LFPx00NpRyGyIdLz7qawFjS4PJMAOkAtmXhk1ulQxAtUcY+tOuOfPg==
+  dependencies:
+    fs "0.0.1-security"
+
 "@ensdomains/ens@^0.4.4":
   version "0.4.5"
   resolved "https://registry.yarnpkg.com/@ensdomains/ens/-/ens-0.4.5.tgz#e0aebc005afdc066447c6e22feb4eda89a5edbfc"
@@ -4289,6 +4296,11 @@ fs.realpath@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/fs.realpath/-/fs.realpath-1.0.0.tgz#1504ad2523158caa40db4a2787cb01411994ea4f"
   integrity sha1-FQStJSMVjKpA20onh8sBQRmU6k8=
+
+fs@0.0.1-security:
+  version "0.0.1-security"
+  resolved "https://registry.yarnpkg.com/fs/-/fs-0.0.1-security.tgz#8a7bd37186b6dddf3813f23858b57ecaaf5e41d4"
+  integrity sha1-invTcYa23d84E/I4WLV+yq9eQdQ=
 
 fsevents@~2.1.1, fsevents@~2.1.2:
   version "2.1.3"
