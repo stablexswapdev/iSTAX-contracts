@@ -64,8 +64,6 @@ contract iStaxIssuer is Ownable {
     uint256 public firstBonusEndBlock;
     // iStax tokens created per block (suggested 2, will be multiplied by BONUS_MULTIPLIER)
     uint256 public constant iStaxPerBlock = 2;
-    // minimum iSTAX tokens created per block (suggested 1)
-      uint256 public constant MiniStaxPerBlock = 1;
     // Bonus muliplier for early iStax earners.
     uint256 public constant BONUS_MULTIPLIER = 8;
     // The migrator contract. It has a lot of power. Can only be set through governance (owner).
@@ -162,37 +160,37 @@ contract iStaxIssuer is Ownable {
 
     // Return reward multiplier over the given _from to _to block.
     // Modified from original sushiswap code to allow for halving logic
-    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 accruedAmount) {
+    function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256 totalAccruedAmount) {
 
         require(_from <= _to, "impossible timerange");
         uint256 endRewardsBlock = firstBonusEndBlock.add(halvingDuration.mul(BONUS_MULTIPLIER.mod(2)) // Assume bonus multiplier will be a multiple of 2
             );
-
+    // Handle the case in which the rewards are already fixed issuance and no decay 
         if (_from > endRewardsBlock) { // Expect this to be the most used logic so execute first for gas savings
-            (, accruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1);
+            (, accruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1); // rewards are constant at minimum multiplier.
             return accruedAmount;
         }
 
-        uint256 currEnd;
-        uint256 currMultiplier;
-        uint256 currAmount;
+        uint256 currEnd; // epoch end block
+        uint256 currMultiplier; //epoch issuanceMultiplier
+        uint256 currAmount; // Counter for current period rewards.
         uint256 currStart = Math.max(_from, startBlock);
         uint256 absoluteEnd = Math.min(_to, block.number);
         bool isDone = false;
 
         if (currStart < firstBonusEndBlock) {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is still the initial value
+            // There can be two types here: if the end stops before this end of the firstBonus, and we can exit
             (isDone, currAmount) = _getMultiplierHelperFunction(currStart, firstBonusEndBlock, absoluteEnd, BONUS_MULTIPLIER);
-            if (isDone) { return accruedAmount; }
             currMultiplier = BONUS_MULTIPLIER;
             currStart = firstBonusEndBlock;
             currEnd = firstBonusEndBlock.add(halvingDuration);
-            accruedAmount = currAmount;
+            totalAccruedAmount = currAmount;
+            if (isDone) { return totalAccruedAmount; }
         } else {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
             uint256 numHalvingDurationsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration); // Truncates during division
             currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed)));
-            // TO-DO Check why sub1 here
             currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed));
         }
 
@@ -201,10 +199,10 @@ contract iStaxIssuer is Ownable {
             // Each time we iterate, we have to reduce the multiplier by 2 to simulate the halving.
             // We then adjust the next start-time range to add the halvingDuration, and 
             // check if the multiplier has reached 1 yet.
-            (isDone, accruedAmount) = _getMultiplierHelperFunction(currStart, currEnd, absoluteEnd, currMultiplier);
-            currMultiplier = currMultiplier.div(2);
-            currStart = currStart.add(halvingDuration);
-            currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration);
+            (isDone, currAmount) = _getMultiplierHelperFunction(currStart, currEnd, absoluteEnd, currMultiplier);
+            currMultiplier = Math.max(1, currMultiplier.div(2)); //Halve the currMultiplier, but ensure a floor of 1
+            currStart = currStart.add(halvingDuration); //Increment by the halving duration
+            currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration); //Increment by halving duration but check for end
             accruedAmount = accruedAmount.add(currAmount);
         }
 
