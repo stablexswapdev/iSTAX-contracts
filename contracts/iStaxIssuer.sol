@@ -184,7 +184,7 @@ contract iStaxIssuer is Ownable {
             (isDone, currAmount) = _getMultiplierHelperFunction(currStart, firstBonusEndBlock, absoluteEnd, BONUS_MULTIPLIER);
 
             if (isDone) { 
-                totalAccruedAmount = currAmount;
+                totalAccruedAmount = currAmount; //update totalAccruedAmount and return (skip the rest of the loops)
                 return totalAccruedAmount; }
             currMultiplier = BONUS_MULTIPLIER.div(2); //decrement next currMultiplier by half
             currStart = firstBonusEndBlock; //reset the next start block to the beginning of the endblock.
@@ -193,8 +193,8 @@ contract iStaxIssuer is Ownable {
         } else {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
             uint256 numHalvingDurationsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration); // Truncates during division
-            currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed))); //Updates currMultiplier
-            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed)); //updates relevant currEnd spot.
+            currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed))); // Updates currMultiplier
+            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed)); // updates relevant currEnd spot.
         }
 
         while(!isDone) {
@@ -203,17 +203,17 @@ contract iStaxIssuer is Ownable {
             // We then adjust the next start-time range to add the halvingDuration, and 
             // check if the multiplier has reached 1 yet.
             (isDone, currAmount) = _getMultiplierHelperFunction(currStart, currEnd, absoluteEnd, currMultiplier);
-            currMultiplier = Math.max(1, currMultiplier.div(2)); //Halve the currMultiplier, but ensure a floor of 1
-            currStart = currStart.add(halvingDuration); //Increment by the halving duration
-            currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration); //Increment by halving duration but check for end
-            totalAccruedAmount = totalAccruedAmount.add(currAmount);  //Update our totalAccruedAmount and loop again
+            currMultiplier = Math.max(1, currMultiplier.div(2)); // Halve the currMultiplier, but ensure a floor of 1
+            currStart = currStart.add(halvingDuration); // Increment by the halving duration
+            currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration); // Increment by halving duration but check for end
+            totalAccruedAmount = totalAccruedAmount.add(currAmount);  // Update our totalAccruedAmount and loop again
         }
 
         return totalAccruedAmount;
     }
     // Helper function that returns both a boolean of whether or not we've reached the end, and a reward calculator for the duration * multiplier
     // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
-    function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal view returns (bool, uint) {
+    function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal view pure returns (bool, uint) {
         return (
           _currEnd >= _absoluteEnd,
           Math.min(_currEnd, _absoluteEnd).sub(_currStart).mul(_multiplier)
