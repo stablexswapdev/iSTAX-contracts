@@ -334,7 +334,8 @@ contract iStaxIssuer is Ownable {
     }
 
     // EMERGENCY ERC20 Rescue ONLY - withdraw all erroneous sent in to this address. 
-    // cannot withdraw iSTAX in the contract, this ensures that owner does not have a way to touch iSTAX tokens in this contract inappropriately
+    // cannot withdraw iSTAX in the contract, this ensures that owner does not have a way to touch iSTAX tokens 
+    // in this contract inappropriately
     function emergencyErc20Retrieve(address token) external onlyOwner {
         require(token != address(iStax)); // only allow retrieval for noniSTAX tokens
         IERC20(token).safeTransfer(address(msg.sender), IERC20(token).balanceOf(address(this))); // helps remove all 

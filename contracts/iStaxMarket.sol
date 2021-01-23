@@ -159,12 +159,14 @@ contract iSTAXmarket is Ownable {
 
 
     // This function is used to send tokens to the pool
+    // May not be necessary
     function depositToIssuer(uint256 _amount) external onlyOwner {
         iStaxMarketToken.safeApprove(address(issuer), _amount);
         issuer.deposit(poolId, _amount);
     }
 
     // This is to allow Issuer to collect the rewards for the issuer
+    // May not be necessary
     function harvestFromIssuer() external onlyOwner {
         issuer.deposit(poolId, 0);
         
