@@ -40,6 +40,7 @@ contract StaxFixedStaking is Ownable {
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
+    event EmergencyErc20Retrieve(address indexed user, uint256 amount);
 
     constructor(
         iStaxIssuer _issuer,
@@ -120,6 +121,14 @@ contract StaxFixedStaking is Ownable {
     function emergencyWithdraw(uint256 _amount) public onlyOwner {
         stax.safeTransfer(address(msg.sender), _amount);
         emit EmergencyWithdraw(msg.sender, _amount);
+    }
+
+        // EMERGENCY ERC20 Rescue ONLY - withdraw all erroneous tokens sent in to this address. 
+    // cannot withdraw STAX in the contract that users deposit
+    function emergencyErc20Retrieve(address token) external onlyOwner {
+        require(token != address(stax), "can't withdraw stax"); // only allow retrieval for nonSTAX tokens
+        IERC20(token).safeTransfer(address(msg.sender), IERC20(token).balanceOf(address(this))); // helps remove all 
+        emit EmergencyErc20Retrieve(address(msg.sender), IERC20(token).balanceOf(address(this)));
     }
 
     function depositToissuer(uint256 _amount) public onlyOwner {

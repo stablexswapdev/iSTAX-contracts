@@ -15,14 +15,14 @@ contract iSTAXmarket is Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 public immutable startCoverageBlock;
+    uint256 public immutable startCoverageBlock; // Blockheight where coverage begins, and deposits are closed for this round
     uint256 public immutable matureBlock; // Set matureBlock to 0 if it is a market that could expire early.
-    uint256 public immutable poolId;
+    uint256 public immutable poolId; // poolId for farming incentives and weightage
 
-    iStaxIssuer public immutable issuer;
-    IERC20 public immutable stax;
-    IERC20 public immutable iStax;
-    IERC20 public immutable iStaxMarketToken;
+    iStaxIssuer public immutable issuer; // contract address for iSTAX minter
+    IERC20 public immutable stax; // contract address for Stax Token
+    IERC20 public immutable iStax; // contract address for iSTAX token
+    IERC20 public immutable iStaxMarketToken; // The dummy deposit token
 
     uint256 public totalDeposited;
     uint256 public coverageOutstanding;
@@ -37,6 +37,7 @@ contract iSTAXmarket is Ownable {
     event FundStax(address indexed user, uint256 amount);
     event Cash(address indexed user, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 amount);
+    event EmergencyErc20Retrieve(address indexed user, uint256 amount);
 
     constructor(
         iStaxIssuer _issuer,
@@ -137,7 +138,9 @@ contract iSTAXmarket is Ownable {
         emit Cash(msg.sender, iStaxBal);
     }
 
-    // EMERGENCY ONLY - withdraw all stax sent in to this address. 
+    // EMERGENCY ONLY - withdraw all stax deposited in to this address. 
+    // In theory, crowdsourced other projects like a KeeperDAO or other collective can also decide to send funds in to top up STAX rewards
+
     // Note to owner: Please make sure not to send in any assets that are not STAX
     function emergencyWithdraw() external onlyOwner {
         coverageOutstanding = 0;
@@ -146,12 +149,22 @@ contract iSTAXmarket is Ownable {
         emit EmergencyWithdraw(msg.sender, staxBal);
     }
 
+    // EMERGENCY ERC20 Rescue ONLY - withdraw all erroneous sent in to this address. 
+    // cannot withdraw iSTAX in the contract, this ensure that all iSTAX deposited in goes through the cash function
+    function emergencyErc20Retrieve(address token) external onlyOwner {
+        require(token != address(iStax)); // only allow retrieval for noniSTAX tokens
+        IERC20(token).safeTransfer(address(msg.sender), IERC20(token).balanceOf(address(this))); // helps remove all 
+        emit EmergencyErc20Retrieve(address(msg.sender), IERC20(token).balanceOf(address(this)));
+    }
+
+
+    // This function is used to send tokens to the pool
     function depositToIssuer(uint256 _amount) external onlyOwner {
         iStaxMarketToken.safeApprove(address(issuer), _amount);
         issuer.deposit(poolId, _amount);
     }
 
-    // This is to allow Issuer to collect the rewards for the issuer? 
+    // This is to allow Issuer to collect the rewards for the issuer
     function harvestFromIssuer() external onlyOwner {
         issuer.deposit(poolId, 0);
         

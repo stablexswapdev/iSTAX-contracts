@@ -84,6 +84,7 @@ contract iStaxIssuer is Ownable {
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event EmergencyErc20Retrieve(address indexed user, uint256 amount);
 
     constructor(
         iStaxToken _iStax,
@@ -223,7 +224,7 @@ contract iStaxIssuer is Ownable {
 
 
     // This function is only used as a View function to see pending iStaxs on frontend.
-
+    // no changes from Sushi
     function pendingiStax(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
@@ -308,6 +309,7 @@ contract iStaxIssuer is Ownable {
 
     // Users may call this Withdraw without caring about rewards. EMERGENCY ONLY.
     // Accrued rewards are lost when this option is chosen.
+    // No changes from Sushi 
     function emergencyWithdraw(uint256 _pid) external {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -319,6 +321,7 @@ contract iStaxIssuer is Ownable {
 
     }
 
+
     // Safe iStax transfer function, just in case if rounding error causes pool to not have enough iStaxs.
     // Utilised by the pool itself (hence internal) to transfer funds to the miners.
     function safeiStaxTransfer(address _to, uint256 _amount) internal {
@@ -329,6 +332,15 @@ contract iStaxIssuer is Ownable {
             iStax.transfer(_to, _amount);
         }
     }
+
+    // EMERGENCY ERC20 Rescue ONLY - withdraw all erroneous sent in to this address. 
+    // cannot withdraw iSTAX in the contract, this ensures that owner does not have a way to touch iSTAX tokens in this contract inappropriately
+    function emergencyErc20Retrieve(address token) external onlyOwner {
+        require(token != address(iStax)); // only allow retrieval for noniSTAX tokens
+        IERC20(token).safeTransfer(address(msg.sender), IERC20(token).balanceOf(address(this))); // helps remove all 
+        emit EmergencyErc20Retrieve(address(msg.sender), IERC20(token).balanceOf(address(this)));
+    }
+
 
     // Update dev address by the previous dev.
     function dev(address _devaddr) public {
