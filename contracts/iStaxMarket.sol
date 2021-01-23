@@ -55,8 +55,9 @@ contract iSTAXmarket is Ownable {
         startCoverageBlock = _startCoverageBlock;
         poolId = _poolId;
     }
-    // There are not rewards to capture 
-    // View function to see pending Tokens on frontend.
+
+    // View function to see pending coverage Tokens on frontend only.
+    // Please ignore the compile warning on this
 
         function pendingExercisableCoverage(address _user) external view returns (uint256) {
             uint256 amount = poolsInfo[msg.sender];

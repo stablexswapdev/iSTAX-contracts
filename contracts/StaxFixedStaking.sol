@@ -59,7 +59,8 @@ contract StaxFixedStaking is Ownable {
         poolId = _poolId;
     }
 
-    // View function to see pending Tokens on frontend.
+    // View function to see pending earned Tokens on frontend.
+    // Please ignore the compile warning on this.
     function pendingReward(address _user) external view returns (uint256) {
         uint256 amount = poolsInfo[msg.sender];
         if (block.number < startBlock) {
