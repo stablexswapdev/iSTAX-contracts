@@ -167,8 +167,8 @@ contract iStaxIssuer is Ownable {
             );
     // Handle the case in which the rewards are already fixed issuance and no decay 
         if (_from > endRewardsBlock) { // Expect this to be the most used logic so execute first for gas savings
-            (, accruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1); // rewards are constant at minimum multiplier.
-            return accruedAmount;
+            (, totalAccruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1); // rewards are constant at minimum multiplier.
+            return totalAccruedAmount;
         }
 
         uint256 currEnd; // epoch end block
@@ -182,20 +182,23 @@ contract iStaxIssuer is Ownable {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is still the initial value
             // There can be two types here: if the end stops before this end of the firstBonus, and we can exit
             (isDone, currAmount) = _getMultiplierHelperFunction(currStart, firstBonusEndBlock, absoluteEnd, BONUS_MULTIPLIER);
-            currMultiplier = BONUS_MULTIPLIER;
-            currStart = firstBonusEndBlock;
-            currEnd = firstBonusEndBlock.add(halvingDuration);
-            totalAccruedAmount = currAmount;
-            if (isDone) { return totalAccruedAmount; }
+
+            if (isDone) { 
+                totalAccruedAmount = currAmount;
+                return totalAccruedAmount; }
+            currMultiplier = BONUS_MULTIPLIER.div(2); //decrement next currMultiplier by half
+            currStart = firstBonusEndBlock; //reset the next start block to the beginning of the endblock.
+            currEnd = firstBonusEndBlock.add(halvingDuration); //.reset next currEnd to increment by halvingDuration
+            totalAccruedAmount = currAmount; // set our totalAccruedAmount to the initial currAmount
         } else {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
             uint256 numHalvingDurationsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration); // Truncates during division
-            currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed)));
-            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed));
+            currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed))); //Updates currMultiplier
+            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed)); //updates relevant currEnd spot.
         }
 
         while(!isDone) {
-            // Iterate through to accrue the values to the accruedAmount that is eventually returned
+            // Iterate through to accrue the values to the totalAccruedAmount that is eventually returned
             // Each time we iterate, we have to reduce the multiplier by 2 to simulate the halving.
             // We then adjust the next start-time range to add the halvingDuration, and 
             // check if the multiplier has reached 1 yet.
@@ -203,10 +206,10 @@ contract iStaxIssuer is Ownable {
             currMultiplier = Math.max(1, currMultiplier.div(2)); //Halve the currMultiplier, but ensure a floor of 1
             currStart = currStart.add(halvingDuration); //Increment by the halving duration
             currEnd = currMultiplier == 1 ? absoluteEnd : currEnd.add(halvingDuration); //Increment by halving duration but check for end
-            accruedAmount = accruedAmount.add(currAmount);
+            totalAccruedAmount = totalAccruedAmount.add(currAmount);  //Update our totalAccruedAmount and loop again
         }
 
-        return accruedAmount;
+        return totalAccruedAmount;
     }
     // Helper function that returns both a boolean of whether or not we've reached the end, and a reward calculator for the duration * multiplier
     // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
