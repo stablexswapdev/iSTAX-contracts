@@ -213,7 +213,7 @@ contract iStaxIssuer is Ownable {
     }
     // Helper function that returns both a boolean of whether or not we've reached the end, and a reward calculator for the duration * multiplier
     // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
-    function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal view pure returns (bool, uint) {
+    function _getMultiplierHelperFunction(uint256 _currStart, uint256 _currEnd, uint256 _absoluteEnd, uint256 _multiplier) internal pure returns (bool, uint) {
         return (
           _currEnd >= _absoluteEnd,
           Math.min(_currEnd, _absoluteEnd).sub(_currStart).mul(_multiplier)
