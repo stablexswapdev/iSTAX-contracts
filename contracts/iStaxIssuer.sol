@@ -170,7 +170,7 @@ contract iStaxIssuer is Ownable {
 
         if (_from > endRewardsBlock) { // Expect this to be the most used logic so execute first for gas savings
             (, accruedAmount) = _getMultiplierHelperFunction(_from, _to, _to, 1);
-            return;
+            return accruedAmount;
         }
 
         uint256 currEnd;
@@ -182,18 +182,18 @@ contract iStaxIssuer is Ownable {
 
         if (currStart < firstBonusEndBlock) {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is still the initial value
-            (isDone, currAmount) += _getMultiplierHelperFunction(currStart, firstBonusEndBlock-1, absoluteEnd, BONUS_MULTIPLIER);
-            if (isDone) { return; }
+            (isDone, currAmount) = _getMultiplierHelperFunction(currStart, firstBonusEndBlock, absoluteEnd, BONUS_MULTIPLIER);
+            if (isDone) { return accruedAmount; }
             currMultiplier = BONUS_MULTIPLIER;
             currStart = firstBonusEndBlock;
-            currEnd = firstBonusEndBlock.add(halvingDuration).sub(1);
+            currEnd = firstBonusEndBlock.add(halvingDuration);
             accruedAmount = currAmount;
         } else {
             // This case is entered if we should start counting blocks from when BONUS_MULTIPLIER is not still the initial value, but not 1
             uint256 numHalvingDurationsPassed = firstBonusEndBlock.sub(currStart).div(halvingDuration); // Truncates during division
             currMultiplier = Math.max(1, currMultiplier.div((2 ** numHalvingDurationsPassed)));
             // TO-DO Check why sub1 here
-            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed)).sub(1);
+            currEnd = currStart.add(halvingDuration.mul(numHalvingDurationsPassed));
         }
 
         while(!isDone) {
@@ -208,7 +208,7 @@ contract iStaxIssuer is Ownable {
             accruedAmount = accruedAmount.add(currAmount);
         }
 
-        return;
+        return accruedAmount;
     }
     // Helper function that returns both a boolean of whether or not we've reached the end, and a reward calculator for the duration * multiplier
     // Returns boolean of if we have hit the end of the rewards, and the amount of rewards accrued in the contract
